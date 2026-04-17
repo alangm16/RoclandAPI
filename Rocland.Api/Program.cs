@@ -245,8 +245,13 @@ builder.Services.AddAntiforgery(options =>
 // Para producción, considera restringir los orígenes permitidos.
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("MobilePolicy", policy =>
-        policy.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod());
+    options.AddPolicy("AngularPanelPolicy", policy =>
+    {
+        policy.WithOrigins("http://localhost:4000") // El puerto de tu contenedor de Angular
+              .AllowAnyHeader()
+              .AllowAnyMethod()
+              .AllowCredentials(); // Indispensable para SignalR
+    });
 });
 
 // Rate limiting — protege formularios y endpoints sensibles
@@ -320,7 +325,7 @@ app.Use(async (context, next) =>
 if (!app.Environment.IsDevelopment())
     app.UseHsts();
 
-app.UseCors("MobilePolicy");
+app.UseCors("AngularPanelPolicy");
 app.UseAuthentication();
 app.UseAuthorization();
 app.UseStaticFiles();

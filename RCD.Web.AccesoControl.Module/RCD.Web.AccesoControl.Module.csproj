@@ -1,0 +1,33 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Content Include="appsettings.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\RCD.Web.AccesoControl.Application\RCD.Web.AccesoControl.Application.csproj" />
+    <ProjectReference Include="..\RCD.Web.AccesoControl.Infrastructure\RCD.Web.AccesoControl.Infrastructure.csproj" />
+    <ProjectReference Include="..\RCD.Web.AccesoControl.Web\RCD.Web.AccesoControl.Web.csproj" />
+  </ItemGroup>
+
+	<Target Name="CopyModuleToHost" AfterTargets="Build">
+		<Message Importance="High" Text="[Monolito Modular] Empujando módulo a la API..." />
+
+		<ItemGroup>
+			<ModuleFiles Include="$(TargetDir)**\*.*" />
+		</ItemGroup>
+
+		<Copy SourceFiles="@(ModuleFiles)" DestinationFolder="..\Rocland.Api\bin\$(Configuration)\$(TargetFramework)\Modules\$(MSBuildProjectName)\%(RecursiveDir)" SkipUnchangedFiles="true" />
+	</Target>
+
+</Project>

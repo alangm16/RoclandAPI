@@ -1,0 +1,30 @@
+<Solution>
+  <Folder Name="/src/" />
+  <Folder Name="/src/BuildingBlocks/" />
+  <Folder Name="/src/BuildingBlocks/Shared/">
+    <Project Path="RCD.Shared.Infrastructure/RCD.Shared.Infrastructure.csproj" />
+    <Project Path="RCD.Shared.Kernel/RCD.Shared.Kernel.csproj" />
+  </Folder>
+  <Folder Name="/src/Desktop/" />
+  <Folder Name="/src/Desktop/Projects/" />
+  <Folder Name="/src/Host/" />
+  <Folder Name="/src/Host/API/">
+    <Project Path="Rocland.Api/Rocland.Api.csproj" />
+  </Folder>
+  <Folder Name="/src/Mobile/" />
+  <Folder Name="/src/Mobile/Projects/" />
+  <Folder Name="/src/Mobile/Projects/AccesoControlMobile/">
+    <Project Path="RCD.Mobile.AccesoControl.Application/RCD.Mob.AccesoControl.Application.csproj" />
+    <Project Path="RCD.Mobile.AccesoControl.Domain/RCD.Mob.AccesoControl.Domain.csproj" />
+    <Project Path="RCD.Mobile.AccesoControl.Infrastructure/RCD.Mob.AccesoControl.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/src/Web/" />
+  <Folder Name="/src/Web/Projects/" />
+  <Folder Name="/src/Web/Projects/AccesoControlWeb/">
+    <Project Path="RCD.Web.AccesoControl.Application/RCD.Web.AccesoControl.Application.csproj" />
+    <Project Path="RCD.Web.AccesoControl.Domain/RCD.Web.AccesoControl.Domain.csproj" />
+    <Project Path="RCD.Web.AccesoControl.Infrastructure/RCD.Web.AccesoControl.Infrastructure.csproj" />
+    <Project Path="RCD.Web.AccesoControl.Module/RCD.Web.AccesoControl.Module.csproj" Id="9fe24f1a-86c7-4c7e-b70a-dff32d4ce99d" />
+    <Project Path="RCD.Web.AccesoControl.Web/RCD.Web.AccesoControl.Web.csproj" Id="46a3b7fe-12a5-4e5d-86d2-93ccc50be782" />
+  </Folder>
+</Solution>

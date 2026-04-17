@@ -1,0 +1,48 @@
+# User secrets de VS
+**/*.user
+**/secrets.json
+
+# Carpetas de publicación
+**/publish/
+**/bin/
+**/obj/
+
+# Android keystore
+**/*.keystore
+**/*.jks
+
+# Certificados
+**/*.pfx
+**/*.pem
+**/*.key
+
+# Visual Studio
+.vs/
+bin/
+obj/
+
+# User-specific files
+*.user
+*.suo
+*.cache
+*.log
+
+# SQL Server
+*.mdf
+*.ldf
+
+# Rider / VS Code
+.idea/
+.vscode/
+
+appsettings.Production.json
+
+**/appsettings.Secrets.json
+**/appsettings.Production.json
+
+appsettings.Secrets.json
+
+bin/
+obj/
+*.Development.json
+*.secrets.json

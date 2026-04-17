@@ -1,0 +1,6 @@
+@Rocland.Api_HostAddress = http://localhost:5007
+
+GET {{Rocland.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

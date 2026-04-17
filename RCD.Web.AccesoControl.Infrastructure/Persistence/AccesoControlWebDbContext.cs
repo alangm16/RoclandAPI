@@ -1,0 +1,128 @@
+﻿using Microsoft.EntityFrameworkCore;
+using RCD.Web.AccesoControl.Domain.Models.Entities;
+
+namespace RCD.Web.AccesoControl.Infrastructure.Persistence;
+
+public class AccesoControlWebDbContext : DbContext
+{
+    public AccesoControlWebDbContext(DbContextOptions<AccesoControlWebDbContext> options) : base(options) { }
+
+    public DbSet<TipoIdentificacion> TiposIdentificacion => Set<TipoIdentificacion>();
+    public DbSet<Area> Areas => Set<Area>();
+    public DbSet<MotivoVisita> MotivosVisita => Set<MotivoVisita>();
+    public DbSet<Persona> Personas => Set<Persona>();
+    public DbSet<Guardia> Guardias => Set<Guardia>();
+    public DbSet<Gafete> Gafetes => Set<Gafete>();
+    public DbSet<RegistroVisitante> RegistrosVisitantes => Set<RegistroVisitante>();
+    public DbSet<RegistroProveedor> RegistrosProveedores => Set<RegistroProveedor>();
+    public DbSet<SolicitudPendiente> SolicitudesPendientes => Set<SolicitudPendiente>();
+    public DbSet<Administrador> Administradores => Set<Administrador>();
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        base.OnModelCreating(modelBuilder);
+
+        // ── Nombres de tablas ──────────────────────────────────────────
+        modelBuilder.Entity<TipoIdentificacion>()
+            .ToTable("TBL_ROCLAND_GUARD_TIPODEIDENTIFICACION");
+        modelBuilder.Entity<Area>()
+            .ToTable("TBL_ROCLAND_GUARD_AREAS");
+        modelBuilder.Entity<MotivoVisita>()
+            .ToTable("TBL_ROCLAND_GUARD_MOTIVOVISITA");
+        modelBuilder.Entity<Persona>()
+            .ToTable("TBL_ROCLAND_GUARD_PERSONAS");
+        modelBuilder.Entity<Guardia>()
+            .ToTable("TBL_ROCLAND_GUARD_GUARDIAS");
+        modelBuilder.Entity<RegistroVisitante>()
+            .ToTable(
+                "TBL_ROCLAND_GUARD_REGISTROVISITANTES",
+                tb => tb.UseSqlOutputClause(false)
+            );
+
+        modelBuilder.Entity<RegistroProveedor>()
+            .ToTable(
+                "TBL_ROCLAND_GUARD_REGISTROPROVEEDORES",
+                tb => tb.UseSqlOutputClause(false)
+            );
+        modelBuilder.Entity<SolicitudPendiente>()
+            .ToTable("TBL_ROCLAND_GUARD_SOLICITUDESPENDIENTES");
+        modelBuilder.Entity<Administrador>()
+            .ToTable("TBL_ROCLAND_GUARD_ADMINISTRADORES");
+
+        // ── Índice único Persona ───────────────────────────────────────
+        modelBuilder.Entity<Persona>()
+            .HasIndex(p => new { p.TipoIdentificacionId, p.NumeroIdentificacion })
+            .IsUnique()
+            .HasDatabaseName("UQ_PERSONA");
+
+        // ── Columnas calculadas (solo lectura, generadas en BD) ────────
+        modelBuilder.Entity<RegistroVisitante>()
+            .Property(r => r.HoraEntrada).ValueGeneratedOnAddOrUpdate();
+        modelBuilder.Entity<RegistroVisitante>()
+            .Property(r => r.HoraSalida).ValueGeneratedOnAddOrUpdate();
+        modelBuilder.Entity<RegistroVisitante>()
+            .Property(r => r.MinutosEstancia).ValueGeneratedOnAddOrUpdate();
+
+        modelBuilder.Entity<RegistroProveedor>()
+            .Property(r => r.HoraEntrada).ValueGeneratedOnAddOrUpdate();
+        modelBuilder.Entity<RegistroProveedor>()
+            .Property(r => r.HoraSalida).ValueGeneratedOnAddOrUpdate();
+        modelBuilder.Entity<RegistroProveedor>()
+            .Property(r => r.MinutosEstancia).ValueGeneratedOnAddOrUpdate();
+
+        // ── Relaciones Guardia (dos FK a la misma tabla) ───────────────
+        modelBuilder.Entity<RegistroVisitante>()
+            .HasOne(r => r.GuardiaEntrada)
+            .WithMany(g => g.EntradasAutorizadas)
+            .HasForeignKey(r => r.GuardiaEntradaId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<RegistroVisitante>()
+            .HasOne(r => r.GuardiaSalida)
+            .WithMany(g => g.SalidasAutorizadas)
+            .HasForeignKey(r => r.GuardiaSalidaId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<RegistroProveedor>()
+            .HasOne(r => r.GuardiaEntrada)
+            .WithMany(g => g.EntradasProvAutorizadas)
+            .HasForeignKey(r => r.GuardiaEntradaId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<RegistroProveedor>()
+            .HasOne(r => r.GuardiaSalida)
+            .WithMany(g => g.SalidasProvAutorizadas)
+            .HasForeignKey(r => r.GuardiaSalidaId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        // ── Gafetes ─────────────────────────────────────────────────
+        modelBuilder.Entity<Gafete>()
+            .ToTable("TBL_ROCLAND_GUARD_GAFETES");
+
+        modelBuilder.Entity<Gafete>()
+            .HasIndex(g => g.Codigo)
+            .IsUnique();
+
+        modelBuilder.Entity<Gafete>()
+            .HasIndex(g => g.Estado)
+            .HasFilter("[Activo] = 1");
+
+        modelBuilder.Entity<Gafete>()
+            .Property(g => g.Estado)
+            .HasDefaultValue("Libre");
+
+        // Relación con RegistroVisitante (GafeteId es nullable)
+        modelBuilder.Entity<RegistroVisitante>()
+            .HasOne(r => r.Gafete)
+            .WithMany(g => g.RegistrosVisitantes)
+            .HasForeignKey(r => r.GafeteId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        // Relación con RegistroProveedor
+        modelBuilder.Entity<RegistroProveedor>()
+            .HasOne(r => r.Gafete)
+            .WithMany(g => g.RegistrosProveedores)
+            .HasForeignKey(r => r.GafeteId)
+            .OnDelete(DeleteBehavior.SetNull);
+    }
+}

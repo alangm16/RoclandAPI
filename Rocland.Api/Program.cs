@@ -13,13 +13,16 @@ using System.Reflection;
 using System.Text;
 using System.Threading.RateLimiting;
 
+// ─────────────────────────────────────────────────────────────────────────────
+// LOGGING TEMPRANO
+// Se configura antes del builder para capturar errores de arranque.
+// ─────────────────────────────────────────────────────────────────────────────
 Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Information()
     .MinimumLevel.Override("Microsoft.AspNetCore", LogEventLevel.Warning)
     .MinimumLevel.Override("Microsoft.EntityFrameworkCore", LogEventLevel.Warning)
     .Enrich.FromLogContext()
-    .WriteTo.Console(outputTemplate:
-        "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}")
+    .WriteTo.Console(outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}")
     .WriteTo.File(
         path: "logs/accesocontrol-.log",
         rollingInterval: RollingInterval.Day,
@@ -30,137 +33,171 @@ Log.Logger = new LoggerConfiguration()
 var builder = WebApplication.CreateBuilder(args);
 builder.Host.UseSerilog();
 
-// ====================================================================
-// 🚀 INICIO DEL DESCUBRIMIENTO DE CONFIGURACIONES (MÓDULOS)
-// ====================================================================
-var modulesPathConfig = Path.Combine(AppContext.BaseDirectory, "Modules");
-if (!Directory.Exists(modulesPathConfig))
+// ─────────────────────────────────────────────────────────────────────────────
+// CONFIGURACIÓN DE MÓDULOS
+// Cada módulo puede tener su propio appsettings.json y appsettings.Development.json
+// dentro de su subcarpeta en /Modules. Ambos archivos se fusionan con la
+// configuración principal. El archivo .Development.json sobreescribe al base,
+// igual que en una app ASP.NET Core estándar.
+//
+// Estructura esperada por módulo:
+//   Modules/
+//     AccesoControl/
+//       appsettings.json              ← valores base (sin secretos, commiteado)
+//       appsettings.Development.json  ← secretos y overrides locales (en .gitignore)
+//
+// Para añadir un nuevo módulo: solo coloca su DLL y sus appsettings en
+// una carpeta dentro de /Modules. El host lo descubrirá automáticamente.
+// ─────────────────────────────────────────────────────────────────────────────
+var modulesPath = Path.Combine(AppContext.BaseDirectory, "Modules");
+Directory.CreateDirectory(modulesPath);
+
+var environmentName = builder.Environment.EnvironmentName; // "Development", "Production", etc.
+
+foreach (var moduleDir in Directory.GetDirectories(modulesPath))
 {
-    Directory.CreateDirectory(modulesPathConfig);
+    var moduleName = Path.GetFileName(moduleDir);
+
+    // 1. Configuración base del módulo (sin secretos)
+    var baseConfig = Path.Combine(moduleDir, "appsettings.json");
+    if (File.Exists(baseConfig))
+    {
+        builder.Configuration.AddJsonFile(baseConfig, optional: true, reloadOnChange: true);
+        Log.Information("[Host] ⚙️ Config base cargada: {Module}", moduleName);
+    }
+
+    // 2. Configuración de entorno del módulo (secretos y overrides por ambiente)
+    //    Equivalente a appsettings.Development.json de la app principal.
+    var envConfig = Path.Combine(moduleDir, $"appsettings.{environmentName}.json");
+    if (File.Exists(envConfig))
+    {
+        builder.Configuration.AddJsonFile(envConfig, optional: true, reloadOnChange: true);
+        Log.Information("[Host] 🔒 Config de entorno cargada: {Module} ({Env})", moduleName, environmentName);
+    }
 }
 
-// Buscar cualquier archivo que se llame appsettings.json o appsettings.*.json dentro de Modules
-var moduleConfigFiles = Directory.GetFiles(modulesPathConfig, "appsettings.Secrets*.json", SearchOption.AllDirectories);
+// ─────────────────────────────────────────────────────────────────────────────
+// DESCUBRIMIENTO DINÁMICO DE MÓDULOS (DLLs)
+// Se buscan y cargan todos los ensamblados que implementen IRoclandModule.
+// Para añadir un módulo: solo coloca su DLL en una subcarpeta de /Modules.
+// ─────────────────────────────────────────────────────────────────────────────
+var moduleAssemblies = Directory
+    .GetFiles(modulesPath, "RCD.*.Module.dll", SearchOption.AllDirectories)
+    .Select(Assembly.LoadFrom)
+    .ToList();
 
-foreach (var configFile in moduleConfigFiles)
+var modules = new List<IRoclandModule>();
+
+foreach (var assembly in moduleAssemblies)
 {
-    // Fusionamos la configuración del módulo con la principal de la API
-    builder.Configuration.AddJsonFile(configFile, optional: true, reloadOnChange: true);
+    var moduleTypes = assembly.GetTypes()
+        .Where(t => typeof(IRoclandModule).IsAssignableFrom(t) && !t.IsInterface && !t.IsAbstract);
 
-    // Solo para visualizar qué está cargando:
-    var nombreCarpetaModulo = Path.GetFileName(Path.GetDirectoryName(configFile));
-    Console.WriteLine($"[Rocland Host] ⚙️ Configuración cargada del módulo: {nombreCarpetaModulo}");
+    foreach (var type in moduleTypes)
+    {
+        if (Activator.CreateInstance(type) is IRoclandModule instance)
+        {
+            modules.Add(instance);
+            Log.Information("[Host] 📦 Módulo cargado: {Name} v{Version}", instance.Name, instance.Version);
+        }
+    }
 }
-// ====================================================================
-// FIN DEL DESCUBRIMIENTO DE CONFIGURACIONES
-// ====================================================================
 
-// ── MVC + Razor Pages ──────────────────────────────────────────────────
-builder.Services.AddControllersWithViews();
-builder.Services.AddRazorPages();
+// ─────────────────────────────────────────────────────────────────────────────
+// INFRAESTRUCTURA COMPARTIDA DEL HOST
+// Servicios globales que todos los módulos heredan.
+// ─────────────────────────────────────────────────────────────────────────────
 
-// ── SignalR ────────────────────────────────────────────────────────────
+// SignalR (usado por AccesoControl y potencialmente otros módulos)
 builder.Services.AddSignalR();
 
-// ── JWT Auth ───────────────────────────────────────────────────────────
+// Autenticación JWT
+// La clave y el issuer viven en appsettings.Development.json del host (o de un módulo de auth).
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
     options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
 })
-    .AddJwtBearer(options =>
+.AddJwtBearer(options =>
+{
+    options.TokenValidationParameters = new TokenValidationParameters
     {
-        options.TokenValidationParameters = new TokenValidationParameters
-        {
-            ValidateIssuer = true,
-            ValidateAudience = true,
-            ValidateLifetime = true,
-            ValidateIssuerSigningKey = true,
-            ValidIssuer = builder.Configuration["Jwt:Issuer"],
-            ValidAudience = builder.Configuration["Jwt:Audience"],
-            IssuerSigningKey = new SymmetricSecurityKey(
-                Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]!))
-        };
+        ValidateIssuer = true,
+        ValidateAudience = true,
+        ValidateLifetime = true,
+        ValidateIssuerSigningKey = true,
+        ValidIssuer = builder.Configuration["Jwt:Issuer"],
+        ValidAudience = builder.Configuration["Jwt:Audience"],
+        IssuerSigningKey = new SymmetricSecurityKey(
+            Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]!))
+    };
 
-        // Soporte JWT para SignalR (el token viaja en query string)
-        options.Events = new JwtBearerEvents
+    // Permite que SignalR reciba el token vía query string (?access_token=...)
+    options.Events = new JwtBearerEvents
+    {
+        OnMessageReceived = context =>
         {
-            OnMessageReceived = context =>
+            var accessToken = context.Request.Query["access_token"];
+            var path = context.HttpContext.Request.Path;
+
+            if (!string.IsNullOrEmpty(accessToken) &&
+                path.Value?.Contains("accesohub", StringComparison.OrdinalIgnoreCase) == true)
             {
-                var accessToken = context.Request.Query["access_token"];
-                var path = context.HttpContext.Request.Path;
-
-                // El cambio clave: usar Contains e ignorar mayúsculas
-                if (!string.IsNullOrEmpty(accessToken) &&
-                    path.Value != null &&
-                    path.Value.Contains("accesohub", StringComparison.OrdinalIgnoreCase))
-                {
-                    context.Token = accessToken;
-                }
-                return Task.CompletedTask;
+                context.Token = accessToken;
             }
-        };
-    })
-     .AddCookie("AdminCookie", options =>
-     {
-         options.LoginPath = "/Admin/Login";
-         options.LogoutPath = "/Admin/Logout";
-         options.AccessDeniedPath = "/Admin/Login";
-         options.ExpireTimeSpan = TimeSpan.FromHours(8);
-         options.SlidingExpiration = true;
-         options.Cookie.Name = "RoclandAdmin";
-         options.Cookie.HttpOnly = true;
-         options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
-     }); ;
+            return Task.CompletedTask;
+        }
+    };
+})
+.AddCookie("AdminCookie", options =>
+{
+    options.LoginPath = "/Admin/Login";
+    options.LogoutPath = "/Admin/Logout";
+    options.AccessDeniedPath = "/Admin/Login";
+    options.ExpireTimeSpan = TimeSpan.FromHours(8);
+    options.SlidingExpiration = true;
+    options.Cookie.Name = "RoclandAdmin";
+    options.Cookie.HttpOnly = true;
+    options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+});
 
 builder.Services.AddAuthorization(options =>
 {
+    // Política base: solo requiere usuario autenticado.
+    // Para restringir por módulo/proyecto en el futuro, descomenta:
+    // policy.RequireClaim("ProyectosAsignados", "AccesoControlWeb");
     options.AddPolicy("AccesoControlWebPolicy", policy =>
-    {
-        policy.RequireAuthenticatedUser();
-
-        // MAGIA PARA EL FUTURO:
-        // Cuando tengas muchos proyectos, descomentarás la siguiente línea.
-        // Esto obligará a que el token JWT del usuario contenga un permiso explícito 
-        // para entrar a Acceso Control. Si entra alguien de "Inventario", el sistema lo rechazará.
-        // policy.RequireClaim("ProyectosAsignados", "AccesoControlWeb"); 
-    });
+        policy.RequireAuthenticatedUser());
 });
 
-// ── Swagger ────────────────────────────────────────────────────────────
+// Swagger
+// Cada módulo declara su propio grupo (ApiExplorerSettings GroupName).
+// Para añadir un módulo al Swagger: agrega un SwaggerDoc y un endpoint abajo.
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
-    // 1. Definir el documento para el proyecto actual
     c.SwaggerDoc("web-accesocontrol", new OpenApiInfo
     {
-        Title = "Rocland API - Acceso Control Web",
+        Title = "Rocland API — Acceso Control Web",
         Version = "v1",
-        Description = "Módulo para el sistema de control de accesos (Plataforma Web)"
+        Description = "Módulo de control de accesos (plataforma web)"
     });
 
-    c.ResolveConflictingActions(apiDescriptions => apiDescriptions.First());
+    // Para agregar un nuevo módulo al Swagger:
+    // c.SwaggerDoc("web-inventario", new OpenApiInfo { Title = "Rocland API — Inventario", Version = "v1" });
+
+    c.ResolveConflictingActions(descriptions => descriptions.First());
 
     c.DocInclusionPredicate((docName, apiDesc) =>
     {
-        if (!apiDesc.TryGetMethodInfo(out var methodInfo)) return false;
-
-        // Si el documento es 'web-accesocontrol', solo incluye controladores con ese GroupName
-        if (docName == "web-accesocontrol")
-        {
-            return apiDesc.GroupName == "web-accesocontrol";
-        }
-
-        return true;
+        if (!apiDesc.TryGetMethodInfo(out _)) return false;
+        return apiDesc.GroupName == docName;
     });
 
-    // En el futuro, aquí agregarás los demás:
-    // c.SwaggerDoc("web-inventario", new OpenApiInfo { Title = "Rocland API - Inventario", Version = "v1" });
-
-    // 2. Configurar la interfaz de Swagger para que acepte el Token JWT
+    // Soporte de token JWT en la UI de Swagger
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
-        Description = "Autorización JWT. Escribe 'Bearer' [espacio] y luego tu token.\r\n\r\nEjemplo: 'Bearer 12345abcdef'",
+        Description = "Ingresa: Bearer {tu_token}",
         Name = "Authorization",
         In = ParameterLocation.Header,
         Type = SecuritySchemeType.ApiKey,
@@ -172,27 +209,22 @@ builder.Services.AddSwaggerGen(c =>
         {
             new OpenApiSecurityScheme
             {
-                Reference = new OpenApiReference
-                {
-                    Type = ReferenceType.SecurityScheme,
-                    Id = "Bearer"
-                }
+                Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "Bearer" }
             },
             Array.Empty<string>()
         }
     });
 });
 
-// Configuración para Proxy Inverso (Caddy)
+// Proxy inverso (Caddy / Nginx en Docker)
 builder.Services.Configure<ForwardedHeadersOptions>(options =>
 {
     options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
-    // IMPORTANTE: Como estamos en una red interna de Docker, limpiamos las redes conocidas
     options.KnownNetworks.Clear();
     options.KnownProxies.Clear();
 });
 
-// ── Seguridad: Headers HTTP ────────────────────────────────────────────
+// HSTS (solo activo en producción, ver middleware pipeline más abajo)
 builder.Services.AddHsts(options =>
 {
     options.Preload = true;
@@ -200,7 +232,7 @@ builder.Services.AddHsts(options =>
     options.MaxAge = TimeSpan.FromDays(365);
 });
 
-// ── Antiforgery para Razor Pages ───────────────────────────────────────
+// Antiforgery para Razor Pages (panel de administración)
 builder.Services.AddAntiforgery(options =>
 {
     options.Cookie.Name = "RoclandXSRF";
@@ -209,18 +241,18 @@ builder.Services.AddAntiforgery(options =>
     options.Cookie.SameSite = SameSiteMode.Strict;
 });
 
-// ── CORS (para la app móvil) ───────────────────────────────────────────
+// CORS — política permisiva para la app móvil
+// Para producción, considera restringir los orígenes permitidos.
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("MobilePolicy", policy =>
-        policy.AllowAnyOrigin()
-              .AllowAnyHeader()
-              .AllowAnyMethod());
+        policy.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod());
 });
 
-// Configuración de Rate Limiting
+// Rate limiting — protege formularios y endpoints sensibles
 builder.Services.AddRateLimiter(options =>
 {
+    options.RejectionStatusCode = 429;
     options.AddFixedWindowLimiter("FormSubmissionLimit", opt =>
     {
         opt.Window = TimeSpan.FromMinutes(3);
@@ -228,93 +260,53 @@ builder.Services.AddRateLimiter(options =>
         opt.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
         opt.QueueLimit = 0;
     });
-    options.RejectionStatusCode = 429; // Too Many Requests
 });
 
-// -- Quest ----------------------------------
+// QuestPDF
 QuestPDF.Settings.License = LicenseType.Community;
 
-// ====================================================================
-// 🚀 INICIO DEL DESCUBRIMIENTO DINÁMICO DE MÓDULOS
-// ====================================================================
-var modules = new List<IRoclandModule>();
-
-// 1. Definir la ruta de la carpeta Modules
-var modulesPath = Path.Combine(AppContext.BaseDirectory, "Modules");
-if (!Directory.Exists(modulesPath))
-{
-    Directory.CreateDirectory(modulesPath);
-}
-
-// 2. Buscar TODAS las DLLs en la carpeta Modules (buscando en subcarpetas)
-var moduleAssemblies = Directory.GetFiles(modulesPath, "RCD.*.Module.dll", SearchOption.AllDirectories)
-                                .Select(Assembly.LoadFrom)
-                                .ToList();
-
-// 2. Extraer las clases que implementen IRoclandModule
-foreach (var assembly in moduleAssemblies)
-{
-    var moduleTypes = assembly.GetTypes()
-        .Where(t => typeof(IRoclandModule).IsAssignableFrom(t) && !t.IsInterface && !t.IsAbstract);
-
-    foreach (var type in moduleTypes)
-    {
-        // Instanciar la clase del módulo dinámicamente
-        if (Activator.CreateInstance(type) is IRoclandModule moduleInstance)
-        {
-            modules.Add(moduleInstance);
-            Console.WriteLine($"[Rocland Host] Módulo descubierto y cargado: {moduleInstance.Name} v{moduleInstance.Version}");
-        }
-    }
-}
-
-// 3. Ejecutar la fase de Inyección de Dependencias (ConfigureServices) de todos los módulos
+// ─────────────────────────────────────────────────────────────────────────────
+// INYECCIÓN DE DEPENDENCIAS DE MÓDULOS
+// Cada módulo registra sus propios servicios, DbContexts y repositorios.
+// ─────────────────────────────────────────────────────────────────────────────
 foreach (var module in modules)
 {
     module.ConfigureServices(builder.Services, builder.Configuration);
 }
-// ====================================================================
-// FIN DEL DESCUBRIMIENTO
-// ====================================================================
 
-// ====================================================================
-// 🚀 INICIO DE CONFIGURACIÓN DEL BUS DE EVENTOS (MediatR)
-// ====================================================================
-// Recopilamos el assembly de la API y todos los assemblies de los módulos descubiertos
+// ─────────────────────────────────────────────────────────────────────────────
+// MEDIATR — BUS DE EVENTOS
+// Se registran los handlers de la API host y de todos los módulos.
+// ─────────────────────────────────────────────────────────────────────────────
 var allAssemblies = new List<Assembly> { typeof(Program).Assembly };
 allAssemblies.AddRange(moduleAssemblies);
 
 builder.Services.AddMediatR(cfg =>
-{
-    cfg.RegisterServicesFromAssemblies(allAssemblies.ToArray());
-});
-// ====================================================================
-// FIN DE CONFIGURACIÓN DEL BUS
-// ====================================================================
+    cfg.RegisterServicesFromAssemblies(allAssemblies.ToArray()));
 
+// ─────────────────────────────────────────────────────────────────────────────
+// PIPELINE DE MIDDLEWARE
+// ─────────────────────────────────────────────────────────────────────────────
 var app = builder.Build();
 
 app.UseForwardedHeaders();
 
-// ── Middleware pipeline ────────────────────────────────────────────────
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI(c =>
     {
-        // 1. Apuntamos al documento que creamos arriba
-        c.SwaggerEndpoint("/swagger/web-accesocontrol/swagger.json", "Web - Acceso Control");
+        c.SwaggerEndpoint("/swagger/web-accesocontrol/swagger.json", "Acceso Control");
 
-        // En el futuro, agregarás los demás aquí y aparecerán en un menú desplegable:
-        // c.SwaggerEndpoint("/swagger/web-inventario/swagger.json", "Web - Inventario");
+        // Para agregar un nuevo módulo al Swagger UI:
+        // c.SwaggerEndpoint("/swagger/web-inventario/swagger.json", "Inventario");
     });
 }
 
 app.UseRateLimiter();
-
 app.UseHttpsRedirection();
 
-// Headers de seguridad
+// Headers de seguridad HTTP
 app.Use(async (context, next) =>
 {
     context.Response.Headers["X-Content-Type-Options"] = "nosniff";
@@ -326,37 +318,28 @@ app.Use(async (context, next) =>
 });
 
 if (!app.Environment.IsDevelopment())
-{
     app.UseHsts();
-}
 
 app.UseCors("MobilePolicy");
 app.UseAuthentication();
 app.UseAuthorization();
 app.UseStaticFiles();
 
+// Cada módulo registra sus propios endpoints, hubs de SignalR y Razor Pages
 foreach (var module in modules)
 {
     module.ConfigureApplication(app);
 }
 
-app.MapControllerRoute(
-    name: "default",
-    pattern: "{controller=Home}/{action=Index}/{id?}");
-app.MapRazorPages();
-
 app.UseSerilogRequestLogging(options =>
-{
-    options.MessageTemplate =
-        "HTTP {RequestMethod} {RequestPath} → {StatusCode} en {Elapsed:0}ms";
-});
+    options.MessageTemplate = "HTTP {RequestMethod} {RequestPath} → {StatusCode} en {Elapsed:0}ms");
 
-// ====================================================================
-// 🚀 INICIO DE MIGRACIONES DINÁMICAS
-// ====================================================================
+// ─────────────────────────────────────────────────────────────────────────────
+// MIGRACIONES AUTOMÁTICAS
+// Se ejecutan al arranque para todos los DbContexts registrados por módulos.
+// ─────────────────────────────────────────────────────────────────────────────
 using (var scope = app.Services.CreateScope())
 {
-    // Buscamos todas las clases en las DLLs de los módulos que hereden de DbContext
     var dbContextTypes = moduleAssemblies
         .SelectMany(a => a.GetTypes())
         .Where(t => typeof(DbContext).IsAssignableFrom(t) && !t.IsAbstract);
@@ -365,26 +348,18 @@ using (var scope = app.Services.CreateScope())
     {
         try
         {
-            // Extraemos el DbContext del contenedor de inyección de dependencias
             if (scope.ServiceProvider.GetRequiredService(dbContextType) is DbContext dbContext)
             {
-                Console.WriteLine($"[Rocland Host] Verificando migraciones para la base de datos de: {dbContextType.Name}...");
-
-                // Ejecutamos la migración de forma síncrona/bloqueante (necesario en el arranque)
+                Log.Information("[Host] 🗄️ Migrando base de datos: {DbContext}", dbContextType.Name);
                 dbContext.Database.Migrate();
-
-                Console.WriteLine($"[Rocland Host] ✔️ Base de datos actualizada para: {dbContextType.Name}");
+                Log.Information("[Host] ✔️ Migración completada: {DbContext}", dbContextType.Name);
             }
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[Rocland Host] ❌ Error al migrar {dbContextType.Name}: {ex.Message}");
+            Log.Error("[Host] ❌ Error migrando {DbContext}: {Message}", dbContextType.Name, ex.Message);
         }
     }
 }
-// ====================================================================
-// FIN DE MIGRACIONES
-// ====================================================================
 
-// Ejecutar la aplicación
 app.Run();

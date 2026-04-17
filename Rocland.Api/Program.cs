@@ -334,6 +334,12 @@ foreach (var module in modules)
 app.UseSerilogRequestLogging(options =>
     options.MessageTemplate = "HTTP {RequestMethod} {RequestPath} → {StatusCode} en {Elapsed:0}ms");
 
+app.UseRouting();
+
+app.UseAuthorization();
+
+app.MapControllers();
+
 // ─────────────────────────────────────────────────────────────────────────────
 // MIGRACIONES AUTOMÁTICAS
 // Se ejecutan al arranque para todos los DbContexts registrados por módulos.

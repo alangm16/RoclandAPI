@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.SignalR;
 
 namespace RCD.Web.AccesoControl.Infrastructure.Hubs;
 
-[Authorize(AuthenticationSchemes = "AdminCookie,Bearer", Roles = "Guardia,Admin,Supervisor")]
+[Authorize(AuthenticationSchemes = "Bearer", Roles = "Guardia,Admin,Supervisor")]
 public class AccesoControlHub : Hub
 {
     public async Task UnirseAGuardias()

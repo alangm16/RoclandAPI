@@ -148,18 +148,18 @@ builder.Services.AddAuthentication(options =>
             return Task.CompletedTask;
         }
     };
-})
-.AddCookie("AdminCookie", options =>
-{
-    options.LoginPath = "/Admin/Login";
-    options.LogoutPath = "/Admin/Logout";
-    options.AccessDeniedPath = "/Admin/Login";
-    options.ExpireTimeSpan = TimeSpan.FromHours(8);
-    options.SlidingExpiration = true;
-    options.Cookie.Name = "RoclandAdmin";
-    options.Cookie.HttpOnly = true;
-    options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
 });
+//.AddCookie("AdminCookie", options =>
+//{
+//    options.LoginPath = "/Admin/Login";
+//    options.LogoutPath = "/Admin/Logout";
+//    options.AccessDeniedPath = "/Admin/Login";
+//    options.ExpireTimeSpan = TimeSpan.FromHours(8);
+//    options.SlidingExpiration = true;
+//    options.Cookie.Name = "RoclandAdmin";
+//    options.Cookie.HttpOnly = true;
+//    options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+//});
 
 builder.Services.AddAuthorization(options =>
 {
@@ -167,7 +167,9 @@ builder.Services.AddAuthorization(options =>
     // Para restringir por módulo/proyecto en el futuro, descomenta:
     // policy.RequireClaim("ProyectosAsignados", "AccesoControlWeb");
     options.AddPolicy("AccesoControlWebPolicy", policy =>
-        policy.RequireAuthenticatedUser());
+    policy.RequireAuthenticatedUser()
+          .RequireRole("Admin", "Supervisor")
+          .AddAuthenticationSchemes(JwtBearerDefaults.AuthenticationScheme));
 });
 
 // Swagger
@@ -233,25 +235,31 @@ builder.Services.AddHsts(options =>
 });
 
 // Antiforgery para Razor Pages (panel de administración)
-builder.Services.AddAntiforgery(options =>
-{
-    options.Cookie.Name = "RoclandXSRF";
-    options.Cookie.HttpOnly = true;
-    options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
-    options.Cookie.SameSite = SameSiteMode.Strict;
-});
+//builder.Services.AddAntiforgery(options =>
+//{
+//    options.Cookie.Name = "RoclandXSRF";
+//    options.Cookie.HttpOnly = true;
+//    options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+//    options.Cookie.SameSite = SameSiteMode.Strict;
+//});
 
 // CORS — política permisiva para la app móvil
 // Para producción, considera restringir los orígenes permitidos.
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AngularPanelPolicy", policy =>
-    {
-        policy.WithOrigins("http://localhost:4000") // El puerto de tu contenedor de Angular
+        policy.WithOrigins(
+                "http://localhost:4200",
+                "http://localhost:4000"
+              )
               .AllowAnyHeader()
               .AllowAnyMethod()
-              .AllowCredentials(); // Indispensable para SignalR
-    });
+              .AllowCredentials());
+
+    options.AddPolicy("MobilePolicy", policy =>
+        policy.AllowAnyOrigin()
+              .AllowAnyHeader()
+              .AllowAnyMethod());
 });
 
 // Rate limiting — protege formularios y endpoints sensibles
@@ -325,10 +333,12 @@ app.Use(async (context, next) =>
 if (!app.Environment.IsDevelopment())
     app.UseHsts();
 
-app.UseCors("AngularPanelPolicy");
+app.UseRouting();           // ← PRIMERO Routing
+
+app.UseCors("AngularPanelPolicy");  // ← CORS después de Routing, antes de Auth
+
 app.UseAuthentication();
-app.UseAuthorization();
-app.UseStaticFiles();
+app.UseAuthorization();     // ← UNA sola vez, aquí
 
 // Cada módulo registra sus propios endpoints, hubs de SignalR y Razor Pages
 foreach (var module in modules)
@@ -338,10 +348,6 @@ foreach (var module in modules)
 
 app.UseSerilogRequestLogging(options =>
     options.MessageTemplate = "HTTP {RequestMethod} {RequestPath} → {StatusCode} en {Elapsed:0}ms");
-
-app.UseRouting();
-
-app.UseAuthorization();
 
 app.MapControllers();
 

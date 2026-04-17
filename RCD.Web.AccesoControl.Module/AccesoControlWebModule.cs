@@ -3,7 +3,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using RCD.Shared.Kernel.Modularity; // El namespace de tu nueva interfaz
 using RCD.Web.AccesoControl.Infrastructure; // Para acceder a tu capa de infraestructura
-
+using RCD.Web.AccesoControl.Infrastructure.Hubs;
 namespace RCD.Web.AccesoControl.Module;
 
 public class AccesoControlWebModule : IRoclandModule
@@ -29,8 +29,13 @@ public class AccesoControlWebModule : IRoclandModule
     // 3. Configuración del Pipeline HTTP
     public void ConfigureApplication(IApplicationBuilder app)
     {
-        // Por ahora queda vacío. 
-        // En el futuro, si este módulo requiere un Middleware específico 
-        // (ej. app.UseMiMiddlewareDeAcceso()), se registra aquí y no en el Program.cs de la API.
+        // Mapear el Hub de SignalR de este módulo
+        // La ruta /accesohub coincide con:
+        //   - OnMessageReceived en Program.cs (busca "accesohub")
+        //   - AppConstants.SignalRHubPath en la app móvil ("/accesohub")
+        if (app is WebApplication webApp)
+        {
+            webApp.MapHub<AccesoControlHub>("/accesohub");
+        }
     }
 }

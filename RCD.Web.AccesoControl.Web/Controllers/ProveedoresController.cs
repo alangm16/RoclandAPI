@@ -9,7 +9,6 @@ namespace RCD.Web.AccesoControl.Web.Controllers;
 [ApiController]
 [Route("api/web/accesocontrol/[controller]")]
 [ApiExplorerSettings(GroupName = "web-accesocontrol")]
-[Authorize(Policy = "AccesoControlWebPolicy")]
 public class ProveedoresController : ControllerBase
 {
     private readonly IAccesoService _acceso;

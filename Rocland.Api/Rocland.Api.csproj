@@ -21,4 +21,9 @@
 	  <ProjectReference Include="..\RCD.Shared.Kernel\RCD.Shared.Kernel.csproj" />
 	</ItemGroup>
 
+	<ItemGroup>
+		<ProjectReference Include="..\RCD.Web.AccesoControl.Module\RCD.Web.AccesoControl.Module.csproj" ReferenceOutputAssembly="false" />
+		<ProjectReference Include="..\RCD.Mob.AccesoControl.Module\RCD.Mob.AccesoControl.Module.csproj" ReferenceOutputAssembly="false" />
+	</ItemGroup>
+
 </Project>

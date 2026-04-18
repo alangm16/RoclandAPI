@@ -8,6 +8,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\RCD.Mob.AccesoControl.Infrastructure\RCD.Mob.AccesoControl.Infrastructure.csproj" />
+    <ProjectReference Include="..\RCD.Mob.AccesoControl.Web\RCD.Mob.AccesoControl.Web.csproj" />
     <ProjectReference Include="..\RCD.Shared.Kernel\RCD.Shared.Kernel.csproj" />
   </ItemGroup>
 

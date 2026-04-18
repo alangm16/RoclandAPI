@@ -159,6 +159,11 @@ builder.Services.AddAuthorization(options =>
     policy.RequireAuthenticatedUser()
           .RequireRole("Admin", "Supervisor")
           .AddAuthenticationSchemes(JwtBearerDefaults.AuthenticationScheme));
+
+    options.AddPolicy("AccesoControlMobilePolicy", policy =>
+    policy.RequireAuthenticatedUser()
+          .RequireRole("Guardia")
+          .AddAuthenticationSchemes(JwtBearerDefaults.AuthenticationScheme));
 });
 
 // Swagger

@@ -149,17 +149,6 @@ builder.Services.AddAuthentication(options =>
         }
     };
 });
-//.AddCookie("AdminCookie", options =>
-//{
-//    options.LoginPath = "/Admin/Login";
-//    options.LogoutPath = "/Admin/Logout";
-//    options.AccessDeniedPath = "/Admin/Login";
-//    options.ExpireTimeSpan = TimeSpan.FromHours(8);
-//    options.SlidingExpiration = true;
-//    options.Cookie.Name = "RoclandAdmin";
-//    options.Cookie.HttpOnly = true;
-//    options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
-//});
 
 builder.Services.AddAuthorization(options =>
 {
@@ -186,7 +175,12 @@ builder.Services.AddSwaggerGen(c =>
     });
 
     // Para agregar un nuevo módulo al Swagger:
-    // c.SwaggerDoc("web-inventario", new OpenApiInfo { Title = "Rocland API — Inventario", Version = "v1" });
+    c.SwaggerDoc("mobile-accesocontrol", new OpenApiInfo
+    {
+        Title = "Rocland API — Acceso Control Mobile",
+        Version = "v1",
+        Description = "Módulo de control de accesos (app móvil guardias)"
+    });
 
     c.ResolveConflictingActions(descriptions => descriptions.First());
 
@@ -233,15 +227,6 @@ builder.Services.AddHsts(options =>
     options.IncludeSubDomains = true;
     options.MaxAge = TimeSpan.FromDays(365);
 });
-
-// Antiforgery para Razor Pages (panel de administración)
-//builder.Services.AddAntiforgery(options =>
-//{
-//    options.Cookie.Name = "RoclandXSRF";
-//    options.Cookie.HttpOnly = true;
-//    options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
-//    options.Cookie.SameSite = SameSiteMode.Strict;
-//});
 
 // CORS — política permisiva para la app móvil
 // Para producción, considera restringir los orígenes permitidos.
@@ -311,6 +296,8 @@ if (app.Environment.IsDevelopment())
     {
         c.SwaggerEndpoint("/swagger/web-accesocontrol/swagger.json", "Acceso Control");
 
+        c.SwaggerEndpoint("/swagger/mobile-accesocontrol/swagger.json", "Acceso Control Mobile");
+
         // Para agregar un nuevo módulo al Swagger UI:
         // c.SwaggerEndpoint("/swagger/web-inventario/swagger.json", "Inventario");
     });
@@ -333,12 +320,12 @@ app.Use(async (context, next) =>
 if (!app.Environment.IsDevelopment())
     app.UseHsts();
 
-app.UseRouting();           // ← PRIMERO Routing
+app.UseRouting();   
 
-app.UseCors("AngularPanelPolicy");  // ← CORS después de Routing, antes de Auth
+app.UseCors("AngularPanelPolicy");  
 
 app.UseAuthentication();
-app.UseAuthorization();     // ← UNA sola vez, aquí
+app.UseAuthorization();     
 
 // Cada módulo registra sus propios endpoints, hubs de SignalR y Razor Pages
 foreach (var module in modules)

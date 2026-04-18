@@ -74,6 +74,14 @@ foreach (var moduleDir in Directory.GetDirectories(modulesPath))
         builder.Configuration.AddJsonFile(envConfig, optional: true, reloadOnChange: true);
         Log.Information("[Host] 🔒 Config de entorno cargada: {Module} ({Env})", moduleName, environmentName);
     }
+
+    // Se inyecta en el despliegue.
+    var secretsConfig = Path.Combine(moduleDir, "appsettings.Secrets.json");
+    if (File.Exists(secretsConfig))
+    {
+        builder.Configuration.AddJsonFile(secretsConfig, optional: true, reloadOnChange: true);
+        Log.Information("[Host] 🔑 Secretos cargados para el módulo: {Module}", moduleName);
+    }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

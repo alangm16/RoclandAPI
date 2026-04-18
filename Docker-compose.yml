@@ -10,9 +10,8 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
     volumes:
-      # Mapeo de configuración externa (donde guardas tus appsettings.Secrets.json)
       - C:\RoclandConfig:C:\external_secrets:ro
     entrypoint: 
       - cmd
       - /c
-      - copy C:\external_secrets\appsettings.Secrets.json C:\app\appsettings.Secrets.json && dotnet Rocland.Api.dll
+      - xcopy C:\external_secrets\* C:\app\Modules /s /y /i && dotnet Rocland.Api.dll

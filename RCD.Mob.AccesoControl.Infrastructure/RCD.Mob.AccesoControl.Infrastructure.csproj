@@ -7,9 +7,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\RCD.Mob.AccesoControl.Application\RCD.Mob.AccesoControl.Application.csproj" />
     <ProjectReference Include="..\RCD.Mob.AccesoControl.Web\RCD.Mob.AccesoControl.Web.csproj" />
-    <ProjectReference Include="..\RCD.Shared.Infrastructure\RCD.Shared.Infrastructure.csproj" />
+    <ProjectReference Include="..\RCD.Shared.Kernel\RCD.Shared.Kernel.csproj" />
   </ItemGroup>
 
 </Project>

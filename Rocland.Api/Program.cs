@@ -294,7 +294,7 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI(c =>
     {
-        c.SwaggerEndpoint("/swagger/web-accesocontrol/swagger.json", "Acceso Control");
+        c.SwaggerEndpoint("/swagger/web-accesocontrol/swagger.json", "Acceso Control Web");
 
         c.SwaggerEndpoint("/swagger/mobile-accesocontrol/swagger.json", "Acceso Control Mobile");
 

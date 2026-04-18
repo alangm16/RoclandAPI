@@ -6,10 +6,10 @@ using RCD.Web.AccesoControl.Application.Interfaces;
 using RCD.Web.AccesoControl.Infrastructure.Hubs;
 using System.Runtime.InteropServices;
 
-namespace RCD.Mobile.AccesoControl.Web.Controllers;
+namespace RCD.Mob.AccesoControl.Web.Controllers;
 
 [ApiController]
-[Route("api/mobile/accesocontrol/[controller]")]
+[Route("api/mob/accesocontrol/[controller]")]
 [ApiExplorerSettings(GroupName = "mobile-accesocontrol")]
 [Authorize(Policy = "AccesoControlMobilePolicy")]
 public class GuardiasController : ControllerBase

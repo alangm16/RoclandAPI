@@ -6,8 +6,4 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\RCD.Mobile.AccesoControl.Domain\RCD.Mob.AccesoControl.Domain.csproj" />
-  </ItemGroup>
-
 </Project>

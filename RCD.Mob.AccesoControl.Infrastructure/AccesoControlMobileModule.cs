@@ -18,7 +18,7 @@ public class AccesoControlMobileModule : IRoclandModule
         // Registrar los controllers de este módulo
         services.AddControllers()
             .AddApplicationPart(
-                typeof(Controllers.GuardiasController).Assembly);
+                typeof(GuardiasController).Assembly);
 
         // Registrar policy Mobile
         services.AddAccesoControlMobileModule(configuration);

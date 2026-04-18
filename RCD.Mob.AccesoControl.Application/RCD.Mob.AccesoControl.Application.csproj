@@ -6,8 +6,4 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\RCD.Shared.Kernel\RCD.Shared.Kernel.csproj" />
-  </ItemGroup>
-
 </Project>

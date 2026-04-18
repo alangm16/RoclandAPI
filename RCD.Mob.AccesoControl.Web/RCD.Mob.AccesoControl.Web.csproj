@@ -6,4 +6,10 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\RCD.Shared.Kernel\RCD.Shared.Kernel.csproj" />
+    <ProjectReference Include="..\RCD.Web.AccesoControl.Application\RCD.Web.AccesoControl.Application.csproj" />
+    <ProjectReference Include="..\RCD.Web.AccesoControl.Infrastructure\RCD.Web.AccesoControl.Infrastructure.csproj" />
+  </ItemGroup>
+
 </Project>

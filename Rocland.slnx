@@ -14,9 +14,10 @@
   <Folder Name="/src/Mobile/" />
   <Folder Name="/src/Mobile/Projects/" />
   <Folder Name="/src/Mobile/Projects/AccesoControlMobile/">
-    <Project Path="RCD.Mobile.AccesoControl.Application/RCD.Mob.AccesoControl.Application.csproj" />
-    <Project Path="RCD.Mobile.AccesoControl.Domain/RCD.Mob.AccesoControl.Domain.csproj" />
-    <Project Path="RCD.Mobile.AccesoControl.Infrastructure/RCD.Mob.AccesoControl.Infrastructure.csproj" />
+    <Project Path="RCD.Mob.AccesoControl.Application/RCD.Mob.AccesoControl.Application.csproj" Id="b37ef8a9-4d30-4cbe-8f0e-a3eb2044df91" />
+    <Project Path="RCD.Mob.AccesoControl.Domain/RCD.Mob.AccesoControl.Domain.csproj" Id="6458d755-9e61-4f9c-a7cf-153a303f8993" />
+    <Project Path="RCD.Mob.AccesoControl.Infrastructure/RCD.Mob.AccesoControl.Infrastructure.csproj" Id="57a25a8f-7289-44a2-a048-25b5e2c36ddc" />
+    <Project Path="RCD.Mob.AccesoControl.Web/RCD.Mob.AccesoControl.Web.csproj" Id="ac841024-cdf0-4e9e-a96e-308ac91e66a6" />
   </Folder>
   <Folder Name="/src/Web/" />
   <Folder Name="/src/Web/Projects/" />

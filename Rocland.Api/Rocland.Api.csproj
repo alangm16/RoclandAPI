@@ -12,14 +12,14 @@
     <Folder Include="Controllers\Web\AccesoControlWeb\" />
   </ItemGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\RCD.Mobile.AccesoControl.Application\RCD.Mob.AccesoControl.Application.csproj" />
-    <ProjectReference Include="..\RCD.Mobile.AccesoControl.Infrastructure\RCD.Mob.AccesoControl.Infrastructure.csproj" />
-    
-  </ItemGroup>
-
 	<ItemGroup>
 		<PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.6" />
+	</ItemGroup>
+
+
+	<ItemGroup>
+	  <ProjectReference Include="..\RCD.Mob.AccesoControl.Application\RCD.Mob.AccesoControl.Application.csproj" />
+	  <ProjectReference Include="..\RCD.Mob.AccesoControl.Infrastructure\RCD.Mob.AccesoControl.Infrastructure.csproj" />
 	</ItemGroup>
 
 </Project>

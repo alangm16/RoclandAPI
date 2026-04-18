@@ -3,10 +3,10 @@ using RCD.Web.AccesoControl.Application.DTOs;
 using RCD.Web.AccesoControl.Application.Interfaces;
 using System.Runtime.InteropServices;
 
-namespace RCD.Mobile.AccesoControl.Web.Controllers;
+namespace RCD.Mob.AccesoControl.Web.Controllers;
 
 [ApiController]
-[Route("api/mobile/accesocontrol/[controller]")]
+[Route("api/mob/accesocontrol/[controller]")]
 [ApiExplorerSettings(GroupName = "mobile-accesocontrol")]
 public class AuthController : ControllerBase
 {

@@ -75,7 +75,7 @@ foreach (var moduleDir in Directory.GetDirectories(modulesPath))
         Log.Information("[Host] 🔒 Config de entorno cargada: {Module} ({Env})", moduleName, environmentName);
     }
 
-    // Se inyecta en el despliegue.
+    // Se inyecta en el despliegue x
     var secretsConfig = Path.Combine(moduleDir, "appsettings.Secrets.json");
     if (File.Exists(secretsConfig))
     {

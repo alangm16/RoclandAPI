@@ -25,6 +25,7 @@ namespace RCD.Web.AccesoControl.Infrastructure
             services.AddScoped<IAdminService, AdminService>();
             services.AddScoped<IAuthService, AuthService>(); // El AuthService que ya tienes
             services.AddHttpClient<IFcmService, FcmService>();
+            services.AddScoped<ICatalogoService, CatalogoService>();    
 
             // 4. Background Services (si los tienes)
             services.AddHostedService<CierreAutomaticoService>();

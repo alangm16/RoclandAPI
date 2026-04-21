@@ -21,13 +21,13 @@ COPY . .
 WORKDIR "/src/Rocland.Api"
 RUN dotnet publish "Rocland.Api.csproj" -c Release -o /app/publish /p:UseAppHost=false
 
-# B. Publicar Módulo Web
+# B. Publicar Módulo Web (en su subcarpeta Modules)
 WORKDIR "/src/RCD.Web.AccesoControl.Module"
-RUN dotnet publish -c Release -o /app/publish/Modules/AccesoControlWeb 
+RUN dotnet publish "RCD.Web.AccesoControl.Module.csproj" -c Release -o /app/publish/Modules/AccesoControl /p:UseAppHost=false
 
-# C. Publicar Módulo Mobile (Asegúrate que el nombre coincida con lo que busca el Host)
+# C. Publicar Módulo Mobile
 WORKDIR "/src/RCD.Mob.AccesoControl.Module"
-RUN dotnet publish -c Release -o /app/publish/Modules/AccesoControlMobile
+RUN dotnet publish "RCD.Mob.AccesoControl.Module.csproj" -c Release -o /app/publish/Modules/AccesoControlMobile /p:UseAppHost=false
 
 # 2. Etapa final: Runtime
 FROM mcr.microsoft.com/dotnet/aspnet:10.0-nanoserver-ltsc2022 AS final

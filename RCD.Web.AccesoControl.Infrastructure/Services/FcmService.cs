@@ -50,6 +50,7 @@ public class FcmService : IFcmService
             };
 
             var json = JsonSerializer.Serialize(payload);
+            _logger.LogInformation("====== PAYLOAD ENVIADO A FCM ======\n{Json}", json);
             var request = new HttpRequestMessage(HttpMethod.Post, FcmEndpoint)
             {
                 Content = new StringContent(json, Encoding.UTF8, "application/json")

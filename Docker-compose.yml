@@ -10,8 +10,6 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
     volumes:
-      - C:\RoclandConfig:C:\external_secrets:ro
-    entrypoint: 
-      - cmd
-      - /c
-      - xcopy C:\external_secrets\* C:\app\Modules /s /y /i && dotnet Rocland.Api.dll
+      - C:\RoclandConfig\AccesoControlWeb.Secrets.json:C:\app\Modules\AccesoControlWeb\appsettings.Secrets.json:ro
+      - C:\RoclandConfig\AccesoControlMobile.Secrets.json:C:\app\Modules\AccesoControlMobile\appsettings.Secrets.json:ro
+    entrypoint: ["dotnet", "Rocland.Api.dll"]

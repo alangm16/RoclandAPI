@@ -11,5 +11,5 @@ services:
       - ASPNETCORE_ENVIRONMENT=Production
     volumes:
       - C:\RoclandConfig\AccesoControlWeb:C:\app\Modules\AccesoControlWeb:ro
-      - C:\RoclandConfig\AccesoControlMobile:C:\app\Modules\AccesoControlMobile:ro
+      - C:\RoclandConfig\AccesoControlMobile:C:\app\Modules\AccesoControlMobileConfig:ro
     entrypoint: ["dotnet", "Rocland.Api.dll"]

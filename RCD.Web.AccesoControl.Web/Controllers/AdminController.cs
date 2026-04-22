@@ -44,9 +44,13 @@ public class AdminController : ControllerBase
     }
 
     // ── Personas ───────────────────────────────────────────────────────
-    [HttpGet("personas/frecuentes")]
-    public async Task<IActionResult> PersonasFrecuentes()
-        => Ok(await _admin.ObtenerPersonasFrecuentesAsync());
+    // ── Personas ───────────────────────────────────────────────────────
+    [HttpGet("personas")]
+    public async Task<IActionResult> Personas([FromQuery] string? busqueda, [FromQuery] int page = 1, [FromQuery] int pageSize = 10)
+    {
+        var (items, total) = await _admin.ObtenerPersonasPaginadasAsync(busqueda, page, pageSize);
+        return Ok(new { Items = items, Total = total });
+    }
 
     [HttpGet("personas/{id}")]
     public async Task<IActionResult> PerfilPersona(int id)

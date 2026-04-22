@@ -16,7 +16,7 @@ public interface IAdminService
         string? busqueda, string? tipo, DateTime? desde, DateTime? hasta, int pagina, int porPagina);
 
     // Personas
-    Task<IEnumerable<PersonaPerfilDto>> ObtenerPersonasFrecuentesAsync(int top = 20);
+    Task<(IEnumerable<PersonaPerfilDto> Items, int Total)> ObtenerPersonasPaginadasAsync(string? busqueda, int pagina, int porPagina);
     Task<PersonaPerfilDto?> ObtenerPerfilPersonaAsync(int id);
     Task<IEnumerable<HistorialAccesoDto>> ObtenerHistorialPersonaAsync(int personaId);
 

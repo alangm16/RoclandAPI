@@ -259,13 +259,30 @@ public class AdminService : IAdminService
     }
 
     // ── Personas ───────────────────────────────────────────────────────
-    public async Task<IEnumerable<PersonaPerfilDto>> ObtenerPersonasFrecuentesAsync(int top = 20)
+    public async Task<(IEnumerable<PersonaPerfilDto> Items, int Total)> ObtenerPersonasPaginadasAsync(string? busqueda, int pagina, int porPagina)
     {
-        return await _db.Personas
+        var query = _db.Personas
             .Include(p => p.TipoIdentificacion)
-            .Where(p => p.Activo && p.TotalVisitas > 0)
+            .Where(p => p.Activo);
+
+        // Aplicar filtro de búsqueda si existe
+        if (!string.IsNullOrWhiteSpace(busqueda))
+        {
+            busqueda = busqueda.ToLower();
+            query = query.Where(p =>
+                p.Nombre.ToLower().Contains(busqueda) ||
+                p.NumeroIdentificacion.ToLower().Contains(busqueda) ||
+                (p.Empresa != null && p.Empresa.ToLower().Contains(busqueda))
+            );
+        }
+
+        var total = await query.CountAsync();
+
+        // Mantenemos el orden por TotalVisitas para seguir viendo a los más "frecuentes" primero
+        var items = await query
             .OrderByDescending(p => p.TotalVisitas)
-            .Take(top)
+            .Skip((pagina - 1) * porPagina)
+            .Take(porPagina)
             .Select(p => new PersonaPerfilDto(
                 p.Id,
                 p.Nombre,
@@ -278,6 +295,8 @@ public class AdminService : IAdminService
                 p.FechaRegistro,
                 p.FechaUltimaVisita))
             .ToListAsync();
+
+        return (items, total);
     }
 
     public async Task<PersonaPerfilDto?> ObtenerPerfilPersonaAsync(int id)

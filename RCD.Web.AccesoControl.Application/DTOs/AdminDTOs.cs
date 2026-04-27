@@ -53,9 +53,9 @@ public record PersonaPerfilDto(
 // ── CRUD catálogos ─────────────────────────────────────────────────────
 public record CatalogoCreateDto(string Nombre);
 public record CatalogoListDto(int Id, string Nombre, bool Activo);
-public record AreaDto (int Id, string Nombre);
-public record MotivoDto (int Id, string Nombre);
-public record TipoIdDto (int Id, string Nombre);
+public record AreaDto (int Id, string Nombre, bool Activo);
+public record MotivoDto (int Id, string Nombre, bool Activo);
+public record TipoIdDto (int Id, string Nombre, bool Activo);
 public record GuardiaCreateDto(string Nombre, string Usuario, string Password);
 public record GuardiaUpdateDto(string Nombre, bool Activo);
 public record AdminCreateDto(string Nombre, string Usuario, string Password, string Rol);

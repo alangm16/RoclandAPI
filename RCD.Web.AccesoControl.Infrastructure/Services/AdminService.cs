@@ -438,7 +438,7 @@ public class AdminService : IAdminService
     {
         return await _db.Areas
             .OrderBy(a => a.Nombre)
-            .Select(a => new AreaDto(a.Id, a.Nombre))
+            .Select(a => new AreaDto(a.Id, a.Nombre, a.Activo))
             .ToListAsync();
     }
 
@@ -460,7 +460,7 @@ public class AdminService : IAdminService
     {
         return await _db.MotivosVisita
             .OrderBy(m => m.Nombre)
-            .Select(m => new MotivoDto(m.Id, m.Nombre))
+            .Select(m => new MotivoDto(m.Id, m.Nombre, m.Activo))
             .ToListAsync();
     }
 
@@ -482,7 +482,7 @@ public class AdminService : IAdminService
     {
         return await _db.TiposIdentificacion
             .OrderBy(t => t.Nombre)
-            .Select(t => new TipoIdDto(t.Id, t.Nombre))
+            .Select(t => new TipoIdDto(t.Id, t.Nombre, t.Activo))
             .ToListAsync();
     }
 

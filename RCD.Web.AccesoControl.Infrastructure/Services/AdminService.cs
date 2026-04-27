@@ -434,6 +434,14 @@ public class AdminService : IAdminService
     }
 
     // ── Catálogos ──────────────────────────────────────────────────────
+    public async Task<IEnumerable<AreaDto>> GetAreasAsync()
+    {
+        return await _db.Areas
+            .OrderBy(a => a.Nombre)
+            .Select(a => new AreaDto(a.Id, a.Nombre))
+            .ToListAsync();
+    }
+
     public async Task<bool> CrearAreaAsync(CatalogoCreateDto dto)
     {
         _db.Areas.Add(new Area { Nombre = dto.Nombre });
@@ -448,6 +456,14 @@ public class AdminService : IAdminService
         return await _db.SaveChangesAsync() > 0;
     }
 
+    public async Task<IEnumerable<MotivoDto>> GetMotivosAsync()
+    {
+        return await _db.MotivosVisita
+            .OrderBy(m => m.Nombre)
+            .Select(m => new MotivoDto(m.Id, m.Nombre))
+            .ToListAsync();
+    }
+
     public async Task<bool> CrearMotivoAsync(CatalogoCreateDto dto)
     {
         _db.MotivosVisita.Add(new MotivoVisita { Nombre = dto.Nombre });
@@ -460,6 +476,14 @@ public class AdminService : IAdminService
         if (motivo is null) return false;
         motivo.Activo = !motivo.Activo;
         return await _db.SaveChangesAsync() > 0;
+    }
+
+    public async Task<IEnumerable<TipoIdDto>> GetTiposIdAsync()
+    {
+        return await _db.TiposIdentificacion
+            .OrderBy(t => t.Nombre)
+            .Select(t => new TipoIdDto(t.Id, t.Nombre))
+            .ToListAsync();
     }
 
     public async Task<bool> CrearTipoIdAsync(CatalogoCreateDto dto)

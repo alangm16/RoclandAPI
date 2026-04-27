@@ -27,6 +27,9 @@ public interface IAdminService
     Task<bool> ToggleMotivoAsync(int id);
     Task<bool> CrearTipoIdAsync(CatalogoCreateDto dto);
     Task<bool> ToggleTipoIdAsync(int id);
+    Task<IEnumerable<AreaDto>> GetAreasAsync();
+    Task<IEnumerable<MotivoDto>> GetMotivosAsync();
+    Task<IEnumerable<TipoIdDto>> GetTiposIdAsync();
 
     // Guardias
     Task<(IEnumerable<GuardiaListDto> Items, int Total)> ObtenerGuardiasAsync(string? busqueda, int pagina, int porPagina);

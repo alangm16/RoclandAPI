@@ -101,6 +101,18 @@ public class AdminController : ControllerBase
     public async Task<IActionResult> ToggleTipoId(int id)
         => Ok(await _admin.ToggleTipoIdAsync(id));
 
+    [HttpGet("areas")]
+    public async Task<IActionResult> GetAreas()
+    => Ok(await _admin.GetAreasAsync());
+
+    [HttpGet("motivos")]
+    public async Task<IActionResult> GetMotivos()
+        => Ok(await _admin.GetMotivosAsync());
+
+    [HttpGet("tiposid")]
+    public async Task<IActionResult> GetTiposId()
+        => Ok(await _admin.GetTiposIdAsync());
+
     // ── Exportar ───────────────────────────────────────────────────────
     [HttpGet("exportar/excel")]
     public async Task<IActionResult> ExportarExcel()

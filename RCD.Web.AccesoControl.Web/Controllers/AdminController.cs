@@ -44,7 +44,6 @@ public class AdminController : ControllerBase
     }
 
     // ── Personas ───────────────────────────────────────────────────────
-    // ── Personas ───────────────────────────────────────────────────────
     [HttpGet("personas")]
     public async Task<IActionResult> Personas([FromQuery] string? busqueda, [FromQuery] int page = 1, [FromQuery] int pageSize = 10)
     {
@@ -62,6 +61,23 @@ public class AdminController : ControllerBase
     [HttpGet("personas/{id}/historial")]
     public async Task<IActionResult> HistorialPersona(int id)
         => Ok(await _admin.ObtenerHistorialPersonaAsync(id));
+
+    // ── Guardias ───────────────────────────────────────────────────────
+    [HttpGet("guardias")]
+    public async Task<IActionResult> Guardias([FromQuery] string? busqueda, [FromQuery] int page = 1, [FromQuery] int pageSize = 10)
+    {
+        var (items, total) = await _admin.ObtenerGuardiasAsync(busqueda, page, pageSize);
+        return Ok(new { Items = items, Total = total });
+    }
+    [HttpPost("guardias")]
+    public async Task<IActionResult> CrearGuardia(GuardiaCreateDto dto)
+        => Ok(await _admin.CrearGuardiaAsync(dto));
+    [HttpPut("guardias/{id}")]
+    public async Task<IActionResult> ActualizarGuardia(int id, GuardiaUpdateDto dto)
+        => Ok(await _admin.ActualizarGuardiaAsync(id, dto));
+    [HttpPut("guardias/{id}/reset")]
+    public async Task<IActionResult> ResetPassword(int id, [FromBody] string nuevaPassword)
+        => Ok(await _admin.ResetPasswordGuardiaAsync(id, nuevaPassword));
 
     // ── Catálogos ──────────────────────────────────────────────────────
     [HttpPost("areas")]
@@ -84,20 +100,6 @@ public class AdminController : ControllerBase
     [HttpPut("tiposid/{id}/toggle")]
     public async Task<IActionResult> ToggleTipoId(int id)
         => Ok(await _admin.ToggleTipoIdAsync(id));
-
-    // ── Guardias ───────────────────────────────────────────────────────
-    [HttpGet("guardias")]
-    public async Task<IActionResult> Guardias()
-        => Ok(await _admin.ObtenerGuardiasAsync());
-    [HttpPost("guardias")]
-    public async Task<IActionResult> CrearGuardia(GuardiaCreateDto dto)
-        => Ok(await _admin.CrearGuardiaAsync(dto));
-    [HttpPut("guardias/{id}")]
-    public async Task<IActionResult> ActualizarGuardia(int id, GuardiaUpdateDto dto)
-        => Ok(await _admin.ActualizarGuardiaAsync(id, dto));
-    [HttpPut("guardias/{id}/reset")]
-    public async Task<IActionResult> ResetPassword(int id, [FromBody] string nuevaPassword)
-        => Ok(await _admin.ResetPasswordGuardiaAsync(id, nuevaPassword));
 
     // ── Exportar ───────────────────────────────────────────────────────
     [HttpGet("exportar/excel")]

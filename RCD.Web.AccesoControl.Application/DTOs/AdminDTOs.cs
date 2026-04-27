@@ -55,3 +55,10 @@ public record CatalogoCreateDto(string Nombre);
 public record GuardiaCreateDto(string Nombre, string Usuario, string Password);
 public record GuardiaUpdateDto(string Nombre, bool Activo);
 public record AdminCreateDto(string Nombre, string Usuario, string Password, string Rol);
+public record GuardiaListDto(
+    int Id,
+    string Nombre,
+    string Usuario,
+    bool Activo,
+    DateTime FechaCreacion
+);

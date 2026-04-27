@@ -29,7 +29,7 @@ public interface IAdminService
     Task<bool> ToggleTipoIdAsync(int id);
 
     // Guardias
-    Task<IEnumerable<Guardia>> ObtenerGuardiasAsync();
+    Task<(IEnumerable<Guardia> Items, int Total)> ObtenerGuardiasAsync(string? busqueda, int pagina, int porPagina);
     Task<bool> CrearGuardiaAsync(GuardiaCreateDto dto);
     Task<bool> ActualizarGuardiaAsync(int id, GuardiaUpdateDto dto);
     Task<bool> ResetPasswordGuardiaAsync(int id, string nuevaPassword);

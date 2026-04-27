@@ -102,8 +102,6 @@ public class AccesoService : IAccesoService
         var area = await _db.Areas.FindAsync(req.AreaId);
         var motivo = await _db.MotivosVisita.FindAsync(req.MotivoId);
 
-        // ── FIX 1: los nombres de campo deben coincidir EXACTAMENTE con
-        //    la clase NuevaSolicitudEvent que la app móvil deserializa.
         await _hub.Clients.All.SendAsync("NuevaSolicitud", new NuevaSolicitudEvent(
             SolicitudId: solicitud.Id,
             RegistroId: registro.Id,

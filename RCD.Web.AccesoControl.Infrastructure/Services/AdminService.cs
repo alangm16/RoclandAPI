@@ -7,6 +7,7 @@ using RCD.Web.AccesoControl.Infrastructure.Persistence;
 using RCD.Web.AccesoControl.Application.DTOs;
 using RCD.Web.AccesoControl.Domain.Models.Entities;
 using RCD.Web.AccesoControl.Application.Interfaces;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion.Internal;
 
 namespace RCD.Web.AccesoControl.Web.Services;
 
@@ -369,6 +370,69 @@ public class AdminService : IAdminService
                       .OrderByDescending(r => r.FechaEntrada);
     }
 
+    // ── Guardias ───────────────────────────────────────────────────────
+    public async Task<(IEnumerable<GuardiaListDto> Items, int Total)> ObtenerGuardiasAsync(string? busqueda, int pagina, int porPagina)
+    {
+        var query = _db.Guardias.AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(busqueda))
+        {
+            busqueda = busqueda.ToLower();
+            query = query.Where(g =>
+                g.Nombre.ToLower().Contains(busqueda) ||
+                g.Usuario.ToLower().Contains(busqueda));
+        }
+
+        var total = await query.CountAsync();
+
+        var items = await query
+        .OrderByDescending(g => g.Activo)
+        .ThenBy(g => g.Nombre)
+        .Skip((pagina - 1) * porPagina)
+        .Take(porPagina)
+        .Select(g => new GuardiaListDto(
+            g.Id,
+            g.Nombre,
+            g.Usuario,
+            g.Activo,
+            g.FechaCreacion
+        ))
+        .ToListAsync();
+
+        return (items, total);
+    }
+
+    public async Task<bool> CrearGuardiaAsync(GuardiaCreateDto dto)
+    {
+        if (await _db.Guardias.AnyAsync(g => g.Usuario == dto.Usuario))
+            return false;
+
+        _db.Guardias.Add(new Guardia
+        {
+            Nombre = dto.Nombre,
+            Usuario = dto.Usuario,
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password)
+        });
+        return await _db.SaveChangesAsync() > 0;
+    }
+
+    public async Task<bool> ActualizarGuardiaAsync(int id, GuardiaUpdateDto dto)
+    {
+        var guardia = await _db.Guardias.FindAsync(id);
+        if (guardia is null) return false;
+        guardia.Nombre = dto.Nombre;
+        guardia.Activo = dto.Activo;
+        return await _db.SaveChangesAsync() > 0;
+    }
+
+    public async Task<bool> ResetPasswordGuardiaAsync(int id, string nuevaPassword)
+    {
+        var guardia = await _db.Guardias.FindAsync(id);
+        if (guardia is null) return false;
+        guardia.PasswordHash = BCrypt.Net.BCrypt.HashPassword(nuevaPassword);
+        return await _db.SaveChangesAsync() > 0;
+    }
+
     // ── Catálogos ──────────────────────────────────────────────────────
     public async Task<bool> CrearAreaAsync(CatalogoCreateDto dto)
     {
@@ -409,41 +473,6 @@ public class AdminService : IAdminService
         var tipo = await _db.TiposIdentificacion.FindAsync(id);
         if (tipo is null) return false;
         tipo.Activo = !tipo.Activo;
-        return await _db.SaveChangesAsync() > 0;
-    }
-
-    // ── Guardias ───────────────────────────────────────────────────────
-    public async Task<IEnumerable<Guardia>> ObtenerGuardiasAsync()
-        => await _db.Guardias.OrderBy(g => g.Nombre).ToListAsync();
-
-    public async Task<bool> CrearGuardiaAsync(GuardiaCreateDto dto)
-    {
-        if (await _db.Guardias.AnyAsync(g => g.Usuario == dto.Usuario))
-            return false;
-
-        _db.Guardias.Add(new Guardia
-        {
-            Nombre = dto.Nombre,
-            Usuario = dto.Usuario,
-            PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password)
-        });
-        return await _db.SaveChangesAsync() > 0;
-    }
-
-    public async Task<bool> ActualizarGuardiaAsync(int id, GuardiaUpdateDto dto)
-    {
-        var guardia = await _db.Guardias.FindAsync(id);
-        if (guardia is null) return false;
-        guardia.Nombre = dto.Nombre;
-        guardia.Activo = dto.Activo;
-        return await _db.SaveChangesAsync() > 0;
-    }
-
-    public async Task<bool> ResetPasswordGuardiaAsync(int id, string nuevaPassword)
-    {
-        var guardia = await _db.Guardias.FindAsync(id);
-        if (guardia is null) return false;
-        guardia.PasswordHash = BCrypt.Net.BCrypt.HashPassword(nuevaPassword);
         return await _db.SaveChangesAsync() > 0;
     }
 

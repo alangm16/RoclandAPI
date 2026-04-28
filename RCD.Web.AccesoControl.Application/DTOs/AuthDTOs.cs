@@ -1,6 +1,8 @@
-﻿namespace RCD.Web.AccesoControl.Application.DTOs;
+﻿using System.ComponentModel.DataAnnotations;
 
-public record LoginRequest(string Usuario, string Password);
+namespace RCD.Web.AccesoControl.Application.DTOs;
+
+public record LoginRequest([Required]string Usuario, [Required]string Password);
 
 public record LoginResponse(
     string Token,

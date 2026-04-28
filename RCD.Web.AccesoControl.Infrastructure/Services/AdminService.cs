@@ -8,15 +8,25 @@ using RCD.Web.AccesoControl.Application.DTOs;
 using RCD.Web.AccesoControl.Domain.Models.Entities;
 using RCD.Web.AccesoControl.Application.Interfaces;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion.Internal;
+using Microsoft.Extensions.Caching.Memory;
 
 namespace RCD.Web.AccesoControl.Web.Services;
 
 public class AdminService : IAdminService
 {
     private readonly AccesoControlWebDbContext _db;
+    private readonly IMemoryCache _cache;
     private static readonly TimeSpan _offsetMexico = TimeSpan.FromHours(-6);
 
-    public AdminService(AccesoControlWebDbContext db) => _db = db;
+    private const string CacheKeyAreas = "Catalogos_Areas";
+    private const string CacheKeyTiposId = "Catalogos_TiposId";
+    private const string CacheKeyMotivos = "Catalogos_Motivos";
+
+    public AdminService(AccesoControlWebDbContext db, IMemoryCache cache)
+    {
+        _db = db;
+        _cache = cache;
+    }
 
     // ── KPIs ───────────────────────────────────────────────────────────
     public async Task<DashboardKpiDto> ObtenerKpisAsync()
@@ -163,7 +173,7 @@ public class AdminService : IAdminService
     string? busqueda, string? tipo, DateTime? desde, DateTime? hasta,
     int pagina, int porPagina)
     {
-        hasta = hasta?.Date.AddDays(1); // Incluir todo el día final
+        hasta = hasta?.Date.AddDays(1); 
 
         // Función para construir la consulta base de visitantes
         IQueryable<RegistroVisitante> BaseVisitantes() =>
@@ -251,8 +261,8 @@ public class AdminService : IAdminService
 
         var items = itemsUtc.Select(r => new HistorialAccesoDto(
             r.Id, r.Tipo, r.Nombre, r.Empresa, r.NumeroIdentificacion, r.Area, r.Motivo,
-            r.FechaEntrada.Add(_offsetMexico), // <-- Cambio aquí
-            r.FechaSalida.HasValue ? r.FechaSalida.Value.Add(_offsetMexico) : null, // <-- Cambio aquí
+            r.FechaEntrada.Add(_offsetMexico), 
+            r.FechaSalida.HasValue ? r.FechaSalida.Value.Add(_offsetMexico) : null, 
             r.MinutosEstancia, r.EstadoAcceso, r.CodigoGafete, r.Guardia
         )).ToList();
 
@@ -264,6 +274,7 @@ public class AdminService : IAdminService
     {
         var query = _db.Personas
             .Include(p => p.TipoIdentificacion)
+            .AsNoTracking()
             .Where(p => p.Activo);
 
         // Aplicar filtro de búsqueda si existe
@@ -373,7 +384,7 @@ public class AdminService : IAdminService
     // ── Guardias ───────────────────────────────────────────────────────
     public async Task<(IEnumerable<GuardiaListDto> Items, int Total)> ObtenerGuardiasAsync(string? busqueda, int pagina, int porPagina)
     {
-        var query = _db.Guardias.AsQueryable();
+        var query = _db.Guardias.AsQueryable().AsNoTracking();
 
         if (!string.IsNullOrWhiteSpace(busqueda))
         {
@@ -445,7 +456,10 @@ public class AdminService : IAdminService
     public async Task<bool> CrearAreaAsync(CatalogoCreateDto dto)
     {
         _db.Areas.Add(new Area { Nombre = dto.Nombre });
-        return await _db.SaveChangesAsync() > 0;
+        var ok = await _db.SaveChangesAsync() > 0;
+
+        if (ok) _cache.Remove(CacheKeyAreas); 
+        return ok;
     }
 
     public async Task<bool> ToggleAreaAsync(int id)
@@ -453,7 +467,10 @@ public class AdminService : IAdminService
         var area = await _db.Areas.FindAsync(id);
         if (area is null) return false;
         area.Activo = !area.Activo;
-        return await _db.SaveChangesAsync() > 0;
+        var ok = await _db.SaveChangesAsync() > 0;
+
+        if (ok) _cache.Remove(CacheKeyAreas);
+        return ok;
     }
 
     public async Task<IEnumerable<MotivoDto>> GetMotivosAsync()
@@ -467,7 +484,10 @@ public class AdminService : IAdminService
     public async Task<bool> CrearMotivoAsync(CatalogoCreateDto dto)
     {
         _db.MotivosVisita.Add(new MotivoVisita { Nombre = dto.Nombre });
-        return await _db.SaveChangesAsync() > 0;
+        var ok = await _db.SaveChangesAsync() > 0;
+
+        if (ok) _cache.Remove(CacheKeyMotivos); 
+        return ok;
     }
 
     public async Task<bool> ToggleMotivoAsync(int id)
@@ -475,7 +495,10 @@ public class AdminService : IAdminService
         var motivo = await _db.MotivosVisita.FindAsync(id);
         if (motivo is null) return false;
         motivo.Activo = !motivo.Activo;
-        return await _db.SaveChangesAsync() > 0;
+        var ok = await _db.SaveChangesAsync() > 0;
+
+        if (ok) _cache.Remove(CacheKeyMotivos); 
+        return ok;
     }
 
     public async Task<IEnumerable<TipoIdDto>> GetTiposIdAsync()
@@ -489,7 +512,10 @@ public class AdminService : IAdminService
     public async Task<bool> CrearTipoIdAsync(CatalogoCreateDto dto)
     {
         _db.TiposIdentificacion.Add(new TipoIdentificacion { Nombre = dto.Nombre });
-        return await _db.SaveChangesAsync() > 0;
+        var ok = await _db.SaveChangesAsync() > 0;
+
+        if (ok) _cache.Remove(CacheKeyTiposId); 
+        return ok;
     }
 
     public async Task<bool> ToggleTipoIdAsync(int id)
@@ -497,7 +523,10 @@ public class AdminService : IAdminService
         var tipo = await _db.TiposIdentificacion.FindAsync(id);
         if (tipo is null) return false;
         tipo.Activo = !tipo.Activo;
-        return await _db.SaveChangesAsync() > 0;
+        var ok = await _db.SaveChangesAsync() > 0;
+
+        if (ok) _cache.Remove(CacheKeyTiposId); 
+        return ok;
     }
 
     // ── Exportar Excel ─────────────────────────────────────────────────

@@ -12,6 +12,7 @@ using Swashbuckle.AspNetCore.SwaggerGen;
 using System.Reflection;
 using System.Text;
 using System.Threading.RateLimiting;
+using Rocland.Api.Middleware;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // LOGGING TEMPRANO
@@ -242,17 +243,29 @@ builder.Services.AddHsts(options =>
 });
 
 // CORS — política permisiva para la app móvil
-// Para producción, considera restringir los orígenes permitidos.
+// CORS — política dinámica desde appsettings
+var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? Array.Empty<string>();
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AngularPanelPolicy", policy =>
-        policy.WithOrigins(
-                "http://localhost:4200",
-                "http://localhost:4000"
-              )
-              .AllowAnyHeader()
-              .AllowAnyMethod()
-              .AllowCredentials());
+    {
+        if (allowedOrigins.Length > 0)
+        {
+            policy.WithOrigins(allowedOrigins)
+                  .AllowAnyHeader()
+                  .AllowAnyMethod()
+                  .AllowCredentials();
+        }
+        else
+        {
+            // Fallback de seguridad por si falta la configuración
+            //policy.WithOrigins("http://localhost:4200")
+            //      .AllowAnyHeader()
+            //      .AllowAnyMethod()
+            //      .AllowCredentials();
+        }
+    });
 
     options.AddPolicy("MobilePolicy", policy =>
         policy.AllowAnyOrigin()
@@ -276,6 +289,7 @@ builder.Services.AddRateLimiter(options =>
 // QuestPDF
 QuestPDF.Settings.License = LicenseType.Community;
 
+
 // ─────────────────────────────────────────────────────────────────────────────
 // INYECCIÓN DE DEPENDENCIAS DE MÓDULOS
 // Cada módulo registra sus propios servicios, DbContexts y repositorios.
@@ -296,11 +310,19 @@ builder.Services.AddMediatR(cfg =>
     cfg.RegisterServicesFromAssemblies(allAssemblies.ToArray()));
 
 // ─────────────────────────────────────────────────────────────────────────────
+// REGISTRO DE MANEJO GLOBAL DE EXCEPCIONES
+// ─────────────────────────────────────────────────────────────────────────────
+builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+builder.Services.AddProblemDetails();
+
+// ─────────────────────────────────────────────────────────────────────────────
 // PIPELINE DE MIDDLEWARE
 // ─────────────────────────────────────────────────────────────────────────────
 var app = builder.Build();
 
 app.UseForwardedHeaders();
+
+app.UseExceptionHandler();
 
 if (app.Environment.IsDevelopment())
 {

@@ -6,13 +6,8 @@
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
 
-  <ItemGroup>
-    <Folder Include="Controllers\Desktop\" />
-    <Folder Include="Controllers\Mobile\" />
-    <Folder Include="Controllers\Web\AccesoControlWeb\" />
-  </ItemGroup>
-
 	<ItemGroup>
+		<PackageReference Include="AspNetCore.HealthChecks.SqlServer" Version="9.0.0" />
 		<PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.6" />
 	</ItemGroup>
 

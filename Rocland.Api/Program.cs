@@ -173,6 +173,11 @@ builder.Services.AddAuthorization(options =>
     policy.RequireAuthenticatedUser()
           .RequireRole("Guardia")
           .AddAuthenticationSchemes(JwtBearerDefaults.AuthenticationScheme));
+
+    options.AddPolicy("GuardiaRelevoPolicy", policy =>
+    policy.RequireAuthenticatedUser()
+          .RequireRole("Guardia", "Supervisor")
+          .AddAuthenticationSchemes(JwtBearerDefaults.AuthenticationScheme));
 });
 
 // Swagger
@@ -194,6 +199,13 @@ builder.Services.AddSwaggerGen(c =>
         Title = "Rocland API — Acceso Control Mobile",
         Version = "v1",
         Description = "Módulo de control de accesos (app móvil guardias)"
+    });
+
+    c.SwaggerDoc("mobile-guardia-relevo", new OpenApiInfo
+    {
+        Title = "Rocland API — Guardia Relevo Mobile",
+        Version = "v1",
+        Description = "Módulo de bitácora de relevo para guardias"
     });
 
     c.ResolveConflictingActions(descriptions => descriptions.First());
@@ -332,6 +344,8 @@ if (app.Environment.IsDevelopment())
         c.SwaggerEndpoint("/swagger/web-accesocontrol/swagger.json", "Acceso Control Web");
 
         c.SwaggerEndpoint("/swagger/mobile-accesocontrol/swagger.json", "Acceso Control Mobile");
+
+        c.SwaggerEndpoint("/swagger/mobile-guardia-relevo/swagger.json", "Guardia Relevo Mobile");
 
         // Para agregar un nuevo módulo al Swagger UI:
         // c.SwaggerEndpoint("/swagger/web-inventario/swagger.json", "Inventario");

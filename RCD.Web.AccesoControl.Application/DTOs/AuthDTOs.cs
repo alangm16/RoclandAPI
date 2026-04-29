@@ -2,7 +2,7 @@
 
 namespace RCD.Web.AccesoControl.Application.DTOs;
 
-public record LoginRequest([Required]string Usuario, [Required]string Password);
+public record LoginRequest([Required] string Usuario, [Required] string Password);
 
 public record LoginResponse(
     string Token,

@@ -20,6 +20,13 @@
     <Project Path="RCD.Mob.AccesoControl.Module/RCD.Mob.AccesoControl.Module.csproj" Id="e6e62429-905d-43d5-8b71-d2b7a676f459" />
     <Project Path="RCD.Mob.AccesoControl.Web/RCD.Mob.AccesoControl.Web.csproj" Id="ac841024-cdf0-4e9e-a96e-308ac91e66a6" />
   </Folder>
+  <Folder Name="/src/Mobile/Projects/GuardiaRelevoMobile/">
+    <Project Path="RCD.Mob.GuardiaRelevo.Application/RCD.Mob.GuardiaRelevo.Application.csproj" Id="a8513568-e8f3-4ebf-b9d6-c5de420f7df3" />
+    <Project Path="RCD.Mob.GuardiaRelevo.Domain/RCD.Mob.GuardiaRelevo.Domain.csproj" Id="afd249b1-1b35-420f-a490-a5dd18824187" />
+    <Project Path="RCD.Mob.GuardiaRelevo.Infrastructure/RCD.Mob.GuardiaRelevo.Infrastructure.csproj" Id="81465231-39c9-4bd6-86f6-a5ff942e084c" />
+    <Project Path="RCD.Mob.GuardiaRelevo.Module/RCD.Mob.GuardiaRelevo.Module.csproj" Id="487590a3-2ff2-46aa-9157-1ef185764568" />
+    <Project Path="RCD.Mob.GuardiaRelevo.Web/RCD.Mob.GuardiaRelevo.Web.csproj" Id="250bf179-e72b-4e91-8123-d9242ab045e2" />
+  </Folder>
   <Folder Name="/src/Web/" />
   <Folder Name="/src/Web/Projects/" />
   <Folder Name="/src/Web/Projects/AccesoControlWeb/">

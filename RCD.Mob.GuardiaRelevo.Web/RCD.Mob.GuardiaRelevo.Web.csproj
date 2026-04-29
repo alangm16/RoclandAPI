@@ -1,0 +1,14 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\RCD.Mob.GuardiaRelevo.Application\RCD.Mob.GuardiaRelevo.Application.csproj" />
+    <ProjectReference Include="..\RCD.Mob.GuardiaRelevo.Infrastructure\RCD.Mob.GuardiaRelevo.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>

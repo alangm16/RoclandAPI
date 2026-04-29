@@ -1,5 +1,4 @@
 using RCD.Web.AccesoControl.Application.DTOs;
-using RCD.Web.AccesoControl.Domain.Models.Entities;
 
 namespace RCD.Web.AccesoControl.Application.Interfaces;
 

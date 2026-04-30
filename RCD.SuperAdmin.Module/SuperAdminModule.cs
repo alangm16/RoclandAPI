@@ -1,7 +1,8 @@
-﻿using RCD.Shared.Kernel.Modularity;
-using Microsoft.AspNetCore.Builder;
+﻿using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using RCD.Shared.Kernel.Modularity;
+using RCD.SuperAdmin.Infrastructure.DependencyInjection;
 
 namespace RCD.SuperAdmin.Module
 {
@@ -13,9 +14,16 @@ namespace RCD.SuperAdmin.Module
         public void ConfigureServices(IServiceCollection services, IConfiguration configuration)
         {
             services.AddControllers()
-                .AddApplicationPart(typeof(Web.Controllers.SuperAdminController).Assembly);
+                .AddApplicationPart(typeof(Web.Controllers.SuperAdminAuthController).Assembly);
+            services.AddControllers()
+                .AddApplicationPart(typeof(Web.Controllers.PermisosController).Assembly);
 
-            services.AddSuperAdminModule(configuration);
+            services.AddSuperAdminInfrastructure(configuration);
+        }
+
+        public void ConfigureApplication(IApplicationBuilder app)
+        {
+            // Sin hubs SignalR ni middlewares específicos por ahora
         }
     }
 }

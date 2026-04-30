@@ -12,4 +12,14 @@
     <ProjectReference Include="..\RCD.SuperAdmin.Web\RCD.SuperAdmin.Web.csproj" />
   </ItemGroup>
 
+	<Target Name="CopyModuleToHost" AfterTargets="Build">
+		<Message Importance="High" Text="[Monolito Modular] Empujando módulo a la API..." />
+
+		<ItemGroup>
+			<ModuleFiles Include="$(TargetDir)**\*.*" />
+		</ItemGroup>
+
+		<Copy SourceFiles="@(ModuleFiles)" DestinationFolder="..\Rocland.Api\bin\$(Configuration)\$(TargetFramework)\Modules\$(MSBuildProjectName)\%(RecursiveDir)" SkipUnchangedFiles="true" />
+	</Target>
+
 </Project>

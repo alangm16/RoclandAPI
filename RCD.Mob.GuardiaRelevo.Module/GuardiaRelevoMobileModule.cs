@@ -22,7 +22,7 @@ public class GuardiaRelevoMobileModule : IRoclandModule
 
         // Registrar infraestructura del módulo
         services.AddGuardiaRelevoModule(configuration);
-        services.AddScoped<IAuthService, AuthService>();
+        //services.AddScoped<IAuthService, AuthService>();
     }
 
     public void ConfigureApplication(IApplicationBuilder app)

@@ -17,11 +17,13 @@ public static class SuperAdminSetup
             options.UseSqlServer(configuration.GetConnectionString("SuperAdminConnection")),
             poolSize: 128);
 
-        // Services
-        services.AddScoped<ISuperAdminAuthService, SuperAdminAuthService>();
+        services.AddScoped<ITokenService, TokenService>();
+        services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IPermisosService, PermisosService>();
-        // JWT
-        services.AddScoped<IJwtTokenService, JwtTokenService>();
+        services.AddScoped<IUsuarioService, UsuarioService>();
+        services.AddScoped<IRolService, RolService>();
+        services.AddScoped<IProyectoService, ProyectoService>();
+
         return services;
     }
 }

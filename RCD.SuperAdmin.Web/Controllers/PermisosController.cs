@@ -1,7 +1,8 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Authorization;
-using RCD.SuperAdmin.Application.Interfaces;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using RCD.SuperAdmin.Application.DTOs;
+using RCD.SuperAdmin.Application.DTOs.Permisos;
+using RCD.SuperAdmin.Application.Interfaces;
 
 namespace RCD.SuperAdmin.Web.Controllers;
 
@@ -11,21 +12,41 @@ namespace RCD.SuperAdmin.Web.Controllers;
 [Authorize(Roles = "Programador,Supervisor")]   // Solo el Super Panel accede aquí
 public class PermisosController(IPermisosService permisosService) : ControllerBase
 {
-    [HttpGet("matriz/{usuarioId:int}")]
-    public async Task<IActionResult> ObtenerMatriz(int usuarioId) =>
-        Ok(await permisosService.ObtenerMatrizPermisosAsync(usuarioId));
+    [HttpGet("rol/{rolId:int}")]
+    public async Task<IActionResult> MatrizRol(int rolId) =>
+        Ok(await permisosService.ObtenerMatrizRolAsync(rolId));
 
-    [HttpPost("asignar")]
-    public async Task<IActionResult> Asignar([FromBody] AsignarPermisoRequest request)
+    [HttpGet("usuario/{usuarioId:int}")]
+    public async Task<IActionResult> MatrizUsuario(int usuarioId) =>
+        Ok(await permisosService.ObtenerMatrizUsuarioAsync(usuarioId));
+
+    [HttpPut("rol")]
+    public async Task<IActionResult> UpsertRol([FromBody] AsignarPermisoRolRequest req)
     {
-        await permisosService.AsignarPermisoAsync(request);
+        await permisosService.UpsertPermisoRolAsync(req);
         return NoContent();
     }
 
-    [HttpDelete("{permisoId:int}")]
-    public async Task<IActionResult> Revocar(int permisoId)
+    [HttpPut("usuario")]
+    public async Task<IActionResult> UpsertUsuario([FromBody] AsignarPermisoUsuarioRequest req)
     {
-        await permisosService.RevocarPermisoAsync(permisoId);
+        await permisosService.UpsertPermisoUsuarioAsync(req);
+        return NoContent();
+    }
+
+    [HttpDelete("rol")]
+    public async Task<IActionResult> RevocarRol(
+        [FromQuery] int rolId, [FromQuery] int proyectoId, [FromQuery] int? vistaId)
+    {
+        await permisosService.RevocarPermisoRolAsync(rolId, proyectoId, vistaId);
+        return NoContent();
+    }
+
+    [HttpDelete("usuario")]
+    public async Task<IActionResult> RevocarUsuario(
+        [FromQuery] int usuarioId, [FromQuery] int proyectoId, [FromQuery] int? vistaId)
+    {
+        await permisosService.RevocarPermisoUsuarioAsync(usuarioId, proyectoId, vistaId);
         return NoContent();
     }
 }

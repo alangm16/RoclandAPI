@@ -8,5 +8,6 @@ namespace RCD.SuperAdmin.Domain.Entities
         public bool Activo { get; set; } = true;
 
         public ICollection<UsuarioRol> Usuarios { get; set; } = [];
+        public ICollection<PermisoRol> Permisos { get; set; } = [];
     }
 }

@@ -13,8 +13,14 @@ namespace RCD.SuperAdmin.Infrastructure.Data.Configurations
             builder.HasKey(v => v.Id);
             builder.Property(v => v.Codigo).HasMaxLength(60).IsRequired();
             builder.Property(v => v.Nombre).HasMaxLength(150).IsRequired();
+            builder.Property(v => v.Icono).HasMaxLength(100);
 
-            builder.HasOne(v => v.Proyecto).WithMany(p => p.Vistas).HasForeignKey(v => v.ProyectoId);
+            // UNIQUE (ProyectoId, Codigo) — viene del ALTER TABLE del SQL
+            builder.HasIndex(v => new { v.ProyectoId, v.Codigo }).IsUnique();
+
+            builder.HasOne(v => v.Proyecto)
+                   .WithMany(p => p.Vistas)
+                   .HasForeignKey(v => v.ProyectoId);
         }
     }
 }

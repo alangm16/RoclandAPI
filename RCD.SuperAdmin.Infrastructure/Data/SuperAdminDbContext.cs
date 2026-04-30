@@ -10,11 +10,12 @@ namespace RCD.SuperAdmin.Infrastructure.Data
         public DbSet<UsuarioRol> UsuarioRoles => Set<UsuarioRol>();
         public DbSet<Proyecto> Proyectos => Set<Proyecto>();
         public DbSet<Vista> Vistas => Set<Vista>();
-        public DbSet<PermisoUsuario> PermisoUsuarios => Set<PermisoUsuario>();
+        public DbSet<PermisoRol> PermisosRol => Set<PermisoRol>();
+        public DbSet<PermisoUsuario> PermisosUsuario => Set<PermisoUsuario>();
+        public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+        public DbSet<LogAcceso> LogsAcceso => Set<LogAcceso>();
 
-        protected override void OnModelCreating(ModelBuilder modelBuilder)
-        {
+        protected override void OnModelCreating(ModelBuilder modelBuilder) =>
             modelBuilder.ApplyConfigurationsFromAssembly(typeof(SuperAdminDbContext).Assembly);
-        }
     }
 }

@@ -14,6 +14,7 @@ namespace RCD.SuperAdmin.Domain.Entities
         public bool Activo { get; set; } = true;
         public int Orden { get; set; }
 
-        public ICollection<PermisoUsuario> Permisos { get; set; } = [];
+        public ICollection<PermisoRol> PermisosRol { get; set; } = [];
+        public ICollection<PermisoUsuario> PermisosUsuario { get; set; } = [];
     }
 }

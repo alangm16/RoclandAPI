@@ -14,7 +14,7 @@ namespace RCD.SuperAdmin.Module
         public void ConfigureServices(IServiceCollection services, IConfiguration configuration)
         {
             services.AddControllers()
-                .AddApplicationPart(typeof(Web.Controllers.SuperAdminAuthController).Assembly);
+                .AddApplicationPart(typeof(Web.Controllers.AuthController).Assembly);
             services.AddControllers()
                 .AddApplicationPart(typeof(Web.Controllers.PermisosController).Assembly);
 

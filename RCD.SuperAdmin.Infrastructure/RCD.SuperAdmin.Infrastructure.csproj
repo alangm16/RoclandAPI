@@ -1,0 +1,16 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\RCD.Shared.Infrastructure\RCD.Shared.Infrastructure.csproj" />
+    <ProjectReference Include="..\RCD.Shared.Kernel\RCD.Shared.Kernel.csproj" />
+    <ProjectReference Include="..\RCD.SuperAdmin.Application\RCD.SuperAdmin.Application.csproj" />
+    <ProjectReference Include="..\RCD.SuperAdmin.Domain\RCD.SuperAdmin.Domain.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -1,6 +1,14 @@
 <Solution>
   <Folder Name="/src/" />
   <Folder Name="/src/BuildingBlocks/" />
+  <Folder Name="/src/BuildingBlocks/Projects/" />
+  <Folder Name="/src/BuildingBlocks/Projects/SuperAdmin/">
+    <Project Path="RCD.SuperAdmin.Application/RCD.SuperAdmin.Application.csproj" Id="10365efd-0039-459e-a9bb-0e9768268dd9" />
+    <Project Path="RCD.SuperAdmin.Domain/RCD.SuperAdmin.Domain.csproj" Id="1f5fe4d4-7a94-451c-8a6f-b390e3e41eaf" />
+    <Project Path="RCD.SuperAdmin.Infrastructure/RCD.SuperAdmin.Infrastructure.csproj" Id="57b4cf5c-d1e7-4c8a-874c-81f8b510c733" />
+    <Project Path="RCD.SuperAdmin.Module/RCD.SuperAdmin.Module.csproj" Id="2c0ff2a0-1bf4-494c-acff-15f0219df4b9" />
+    <Project Path="RCD.SuperAdmin.Web/RCD.SuperAdmin.Web.csproj" Id="26a9ac45-a655-428e-8366-ccf741cf6edd" />
+  </Folder>
   <Folder Name="/src/BuildingBlocks/Shared/">
     <Project Path="RCD.Shared.Infrastructure/RCD.Shared.Infrastructure.csproj" />
     <Project Path="RCD.Shared.Kernel/RCD.Shared.Kernel.csproj" />

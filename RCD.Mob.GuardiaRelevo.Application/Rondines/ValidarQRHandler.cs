@@ -1,77 +1,52 @@
 ﻿using MediatR;
-using RCD.Mob.GuardiaRelevo.Domain.Entities;
-using RCD.Mob.GuardiaRelevo.Domain.Interfaces;
+using RCD.Mob.GuardiaRelevo.Application.Interfaces;
+// using RCD.Mob.GuardiaRelevo.Domain.Interfaces; // Asegúrate de tener IRelevoRepository
 
 namespace RCD.Mob.GuardiaRelevo.Application.Rondines;
 
 public class ValidarQRHandler : IRequestHandler<ValidarQRCommand, ValidarQRResultDto>
 {
-    private readonly IRondinRepository _rondines;
-    private readonly IUsuarioRepository _usuarios;
+    // Cambiamos a IRelevoRepository (necesitarás crearlo si aún lo llamas IRondinRepository)
+    private readonly IRelevoRepository _relevos;
+    private readonly IAuthService _auth;
 
-    public ValidarQRHandler(IRondinRepository rondines, IUsuarioRepository usuarios)
+    public ValidarQRHandler(IRelevoRepository relevos, IAuthService auth)
     {
-        _rondines = rondines;
-        _usuarios = usuarios;
+        _relevos = relevos;
+        _auth = auth;
     }
 
     public async Task<ValidarQRResultDto> Handle(ValidarQRCommand request, CancellationToken ct)
     {
-        // 1. Obtener el rondín
-        var rondin = await _rondines.ObtenerPorIdAsync(request.RondinId, ct);
-        if (rondin is null)
-            return new(false, "Rondín no encontrado.");
+        // 1. Obtener el Relevo (que agrupa a Saliente y Entrante)
+        var relevo = await _relevos.ObtenerPorIdAsync(request.RelevoId, ct);
+        if (relevo is null)
+            return new(false, "Relevo no encontrado.");
 
-        if (rondin.Estado == "Completado" || rondin.Estado == "Cancelado")
-            return new(false, "El rondín ya fue cerrado.");
+        if (relevo.Estado == "Completado" || relevo.Estado == "Incompleto")
+            return new(false, "El relevo ya fue cerrado.");
 
-        // 2. Validar que el QR corresponde al guardia correcto
-        var usuario = await _usuarios.ObtenerPorQRAsync(request.QRCode, ct);
-        if (usuario is null)
-            return new(false, "Código QR no reconocido.");
+        // 2. Validar el QR consultando al dominio de SuperAdmin
+        var usuarioQRId = await _auth.ObtenerSuperAdminIdPorQRAsync(request.QRCode);
+        if (usuarioQRId == null)
+            return new(false, "Código QR no reconocido o inactivo.");
 
+        // 3. Validar que el QR corresponde al guardia esperado en el relevo
         var idEsperado = request.TipoGuardia == "Saliente"
-            ? rondin.GuardiaSalienteId
-            : rondin.GuardiaEntranteId;
+            ? relevo.GuardiaSalienteId
+            : relevo.GuardiaEntranteId;
 
-        if (usuario.Id != idEsperado)
-            return new(false, $"El QR no corresponde al guardia {request.TipoGuardia.ToLower()}.");
+        // Validamos contra la nueva llave foránea
+        if (usuarioQRId != idEsperado)
+            return new(false, $"El QR no corresponde al guardia {request.TipoGuardia.ToLower()} asignado a este relevo.");
 
-        // 3. Verificar que no haya escaneado ya
-        var yaEscaneo = rondin.Eventos.Any(e =>
-            e.TipoEvento == "QR" &&
-            e.TipoGuardia == request.TipoGuardia &&
-            e.UsuarioId == usuario.Id &&
-            e.Exitoso);
-
-        if (yaEscaneo)
-            return new(false, $"El guardia {request.TipoGuardia.ToLower()} ya escaneó su QR.");
-
-        // 4. Registrar evento QR
-        await _rondines.RegistrarEventoAsync(new RondinEvento
+        // 4. Cambiar estado del relevo si apenas va a comenzar
+        // Ya no insertamos en TBL_ROCLAND_RELEVO_RONDIN_EVENTOS porque fue eliminada.
+        if (relevo.Estado == "Pendiente")
         {
-            RondinId = request.RondinId,
-            UsuarioId = usuario.Id,
-            TipoEvento = "QR",
-            TipoGuardia = request.TipoGuardia,
-            Exitoso = true,
-            FechaEvento = DateTime.Now
-        }, ct);
-
-        // 5. Si ambos QR ya escanearon → pasar a EnCurso
-        var qrSaliente = rondin.Eventos.Any(e => e.TipoEvento == "QR" && e.TipoGuardia == "Saliente" && e.Exitoso);
-        var esSaliente = request.TipoGuardia == "Saliente";
-        var qrEntrante = rondin.Eventos.Any(e => e.TipoEvento == "QR" && e.TipoGuardia == "Entrante" && e.Exitoso);
-        var esEntrante = request.TipoGuardia == "Entrante";
-
-        // El evento que acabamos de guardar ya cuenta
-        var ambosEscanearon = (qrSaliente || esSaliente) && (qrEntrante || esEntrante);
-
-        if (ambosEscanearon)
-        {
-            await _rondines.ActualizarEstadoAsync(request.RondinId, "EnCurso", ct);
+            await _relevos.ActualizarEstadoAsync(relevo.Id, "EnCurso", ct);
         }
 
-        return new(true, $"QR del guardia {request.TipoGuardia.ToLower()} validado.", usuario.Id);
+        return new(true, $"QR del guardia {request.TipoGuardia.ToLower()} validado correctamente.", usuarioQRId.Value);
     }
 }

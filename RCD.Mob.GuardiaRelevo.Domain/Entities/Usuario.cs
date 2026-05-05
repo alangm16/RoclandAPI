@@ -1,19 +1,18 @@
-﻿
-namespace RCD.Mob.GuardiaRelevo.Domain.Entities
+﻿namespace RCD.Mob.GuardiaRelevo.Domain.Entities;
+
+public class Usuario
 {
-    public class Usuario
-    {
-        public int Id { get; set; }
-        public string NombreCompleto { get; set; } = string.Empty;
-        public string Usuario_ { get; set; } = string.Empty;
-        public string NumeroEmpleado { get; set; } = string.Empty;
-        public string? Email { get; set; }
-        public string PasswordHash { get; set; } = string.Empty;
-        public string QRCode { get; set; } = string.Empty;
-        public string Rol { get; set; } = string.Empty;
-        public string? DeviceToken { get; set; }
-        public string? FcmToken { get; set; }
-        public bool Activo { get; set; } = true;
-        public DateTime FechaCreacion { get; set; } 
-    }
+    // Esta es tu nueva llave primaria, que es exactamente el ID de SuperAdmin
+    public int SuperAdminUsuarioId { get; set; }
+
+    public string NumeroEmpleado { get; set; } = null!;
+
+    public string RolLocal { get; set; } = null!; // "Supervisor" o "Guardia"
+
+    public bool Activo { get; set; }
+
+    public DateTime FechaCreacion { get; set; }
+
+    // (Opcional) Propiedades de navegación si EF Core las necesita para los Rondines e Incidencias
+    // public ICollection<Rondin> Rondines { get; set; } = new List<Rondin>();
 }

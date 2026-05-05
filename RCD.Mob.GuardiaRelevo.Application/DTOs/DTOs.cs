@@ -15,15 +15,15 @@ namespace RCD.Mob.GuardiaRelevo.Application.DTOs
 
     // Rondines
     public record RondinActivoDto(
-        int Id,
+        int RelevoId,
         string Turno,
         string HoraInicio,
         string Estado,
-        GuardiaDto GuardiaSaliente,
-        GuardiaDto GuardiaEntrante
+        GuardiaDto? GuardiaSaliente,
+        GuardiaDto? GuardiaEntrante
     );
 
-    public record GuardiaDto(int Id, string NombreCompleto);
+    public record GuardiaDto(int Id, string GuardiaIdentificador);
 
     public record ValidarQRRequestDto(
         int RondinId,
@@ -54,7 +54,7 @@ namespace RCD.Mob.GuardiaRelevo.Application.DTOs
     public record GuardarRespuestasRequestDto(
         int RondinId,
         List<RespuestaItemDto> Respuestas,
-        string? NotasFinales
+        string? Observaciones
     );
 
     public record RespuestaItemDto(
@@ -62,4 +62,5 @@ namespace RCD.Mob.GuardiaRelevo.Application.DTOs
         bool Respuesta,
         string? Comentario
     );
+
 }

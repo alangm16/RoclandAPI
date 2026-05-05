@@ -1,12 +1,12 @@
 ﻿using MediatR;
-using RCD.Mob.GuardiaRelevo.Application.DTOs;
-
+using RCD.Mob.GuardiaRelevo.Application.DTOs; 
 namespace RCD.Mob.GuardiaRelevo.Application.Rondines;
 
-public record ValidarQRCommand(
-    int RondinId,
-    string QRCode,
-    string TipoGuardia   // "Saliente" | "Entrante"
-) : IRequest<ValidarQRResultDto>;
+// El DTO de respuesta
+public record ValidarQRResultDto(bool Exito, string Mensaje, int? UsuarioId = null);
 
-public record ValidarQRResultDto(bool Exitoso, string Mensaje, int? UsuarioId = null);
+public record ValidarQRCommand(
+    int RelevoId,
+    string QRCode,
+    string TipoGuardia // "Saliente" o "Entrante"
+) : IRequest<ValidarQRResultDto>;

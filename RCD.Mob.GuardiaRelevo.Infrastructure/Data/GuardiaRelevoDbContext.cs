@@ -11,16 +11,18 @@ namespace RCD.Mob.GuardiaRelevo.Infrastructure.Data
         public GuardiaRelevoDbContext(DbContextOptions<GuardiaRelevoDbContext> options) : base(options) {}
 
         public DbSet<Usuario> Usuarios => Set <Usuario>();
+        public DbSet<Relevo> Relevos { get; set; }
         public DbSet<Rondin> Rondines => Set <Rondin>();
-        public DbSet<RondinEvento> RondinEventos => Set <RondinEvento>();
+        public DbSet<ConfigTurno> ConfigTurnos { get; set; }
         public DbSet<ChecklistPunto> ChecklistPuntos => Set <ChecklistPunto>();
         public DbSet<ChecklistRespuesta> ChecklistRespuestas => Set <ChecklistRespuesta>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             modelBuilder.ApplyConfiguration(new UsuarioConfiguration());
+            modelBuilder.ApplyConfiguration(new RelevoConfiguration());
             modelBuilder.ApplyConfiguration(new RondinConfiguration());
-            modelBuilder.ApplyConfiguration(new RondinEventoConfiguration());
+            modelBuilder.ApplyConfiguration(new ConfigTurnoConfiguration());
             modelBuilder.ApplyConfiguration(new ChecklistPuntoConfiguration());
             modelBuilder.ApplyConfiguration(new ChecklistRespuestaConfiguration());
         }

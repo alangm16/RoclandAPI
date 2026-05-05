@@ -24,9 +24,11 @@ public static class GuardiaRelevoSetup
         );
 
         // Repositorios
+        services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IUsuarioRepository, UsuarioRepository>();
         services.AddScoped<IRondinRepository, RondinRepository>();
         services.AddScoped<IChecklistRepository, ChecklistRepository>();
+        services.AddScoped<IRelevoRepository, RelevoRepository>();
 
         // Servicios de infraestructura
         //services.AddScoped<JwtTokenService>();

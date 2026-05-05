@@ -1,10 +1,12 @@
 ﻿using RCD.Mob.GuardiaRelevo.Domain.Entities;
 
-namespace RCD.Mob.GuardiaRelevo.Domain.Interfaces;
+namespace RCD.Mob.GuardiaRelevo.Application.Interfaces;
 
 public interface IUsuarioRepository
 {
-    Task<Usuario?> ObtenerPorUsuarioAsync(string usuario, CancellationToken ct = default);
-    Task<Usuario?> ObtenerPorQRAsync(string qrCode, CancellationToken ct = default);
-    Task<Usuario?> ObtenerPorIdAsync(int id, CancellationToken ct = default);
+    // Cambiamos Usuario por NumeroEmpleado
+    Task<Usuario?> ObtenerPorNumeroEmpleadoAsync(string numeroEmpleado, CancellationToken ct = default);
+
+    // Ajustamos el nombre del parámetro para ser más claros
+    Task<Usuario?> ObtenerPorIdAsync(int superAdminUsuarioId, CancellationToken ct = default);
 }

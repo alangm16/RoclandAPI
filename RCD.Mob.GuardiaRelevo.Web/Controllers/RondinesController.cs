@@ -10,7 +10,7 @@ namespace RCD.Mob.GuardiaRelevo.Web.Controllers;
 [ApiController]
 [Route("api/mob/guardiarelevo/rondines")]
 [ApiExplorerSettings(GroupName = "mobile-guardia-relevo")]
-[Authorize(Policy = "GuardiaRelevoPolicy")]
+[Authorize(Policy = "GuardiaRelevoPolicy")] // Ojo: Asegúrate de que esta policy exista en tu Program.cs / IoC
 public class RondinesController : ControllerBase
 {
     private readonly IRondinService _rondinService;
@@ -36,22 +36,25 @@ public class RondinesController : ControllerBase
     {
         var result = await _rondinService.ValidarQRAsync(request, ct);
 
-        if (!result.Exitoso)
+        // 1. Cambiamos result.Exitoso por result.Exito
+        if (!result.Exito)
             return BadRequest(ApiResponse<ValidarQRResultDto>.Fail(result.Mensaje));
 
         return Ok(ApiResponse<ValidarQRResultDto>.Ok(result, result.Mensaje));
     }
 
-    [HttpPost("firmar")]
-    public async Task<ActionResult<ApiResponse<string>>> Firmar(
-        [FromBody] FirmarRondinRequestDto request,
+    // 2. Cambiamos la ruta y la lógica, ya no pedimos firma en Base64
+    [HttpPost("finalizar/{rondinId}")]
+    public async Task<ActionResult<ApiResponse<string>>> Finalizar(
+        int rondinId,
         CancellationToken ct)
     {
-        var result = await _rondinService.FirmarAsync(request, ct);
+        // Llamamos al nuevo método que creamos en el servicio
+        var result = await _rondinService.FinalizarRondinAsync(rondinId, ct);
 
         if (!result)
-            return BadRequest(ApiResponse<string>.Fail("No se pudo registrar la firma."));
+            return BadRequest(ApiResponse<string>.Fail("No se pudo finalizar el rondín o ya estaba cerrado."));
 
-        return Ok(ApiResponse<string>.Ok("Firma registrada."));
+        return Ok(ApiResponse<string>.Ok("Rondín finalizado con éxito."));
     }
 }

@@ -7,5 +7,5 @@ public interface IRondinService
 {
     Task<RondinActivoDto?> ObtenerActivoAsync(CancellationToken ct = default);
     Task<ValidarQRResultDto> ValidarQRAsync(ValidarQRRequestDto request, CancellationToken ct = default);
-    Task<bool> FirmarAsync(FirmarRondinRequestDto request, CancellationToken ct = default);
+    Task<bool> FinalizarRondinAsync(int rondinId, CancellationToken ct = default);
 }

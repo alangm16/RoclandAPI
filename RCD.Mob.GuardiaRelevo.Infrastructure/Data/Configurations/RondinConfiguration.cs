@@ -6,23 +6,46 @@ namespace RCD.Mob.GuardiaRelevo.Infrastructure.Data.Configurations;
 
 public class RondinConfiguration : IEntityTypeConfiguration<Rondin>
 {
-    public void Configure(EntityTypeBuilder<Rondin> b)
+    public void Configure(EntityTypeBuilder<Rondin> builder)
     {
-        b.ToTable("TBL_ROCLAND_RELEVO_RONDINES");
-        b.HasKey(x => x.Id);
-        b.Property(x => x.Turno).HasMaxLength(20).IsRequired();
-        b.Property(x => x.Estado).HasMaxLength(20).HasDefaultValue("Pendiente").IsRequired();
-        b.Property(x => x.NotasFinales).HasMaxLength(1000);
-        b.Property(x => x.FechaCreacion).HasDefaultValueSql("GETDATE()");
+        builder.ToTable("TBL_ROCLAND_RELEVO_RONDINES");
 
-        b.HasOne(x => x.GuardiaSaliente)
-         .WithMany()
-         .HasForeignKey(x => x.GuardiaSalienteId)
-         .OnDelete(DeleteBehavior.Restrict);
+        builder.HasKey(x => x.Id);
 
-        b.HasOne(x => x.GuardiaEntrante)
-         .WithMany()
-         .HasForeignKey(x => x.GuardiaEntranteId)
-         .OnDelete(DeleteBehavior.Restrict);
+        // Clave foránea hacia el Relevo (nota el error de dedo intencional de la BD: RelevodId)
+        builder.Property(x => x.RelevodId).IsRequired();
+
+        builder.Property(x => x.TipoRondin)
+               .HasMaxLength(20)
+               .IsRequired();
+
+        // El estado ahora arranca en 'EnCurso'
+        builder.Property(x => x.Estado)
+               .HasMaxLength(20)
+               .HasDefaultValue("EnCurso")
+               .IsRequired();
+
+        builder.Property(x => x.GuardiaId).IsRequired();
+
+        builder.Property(x => x.FechaInicio)
+               .HasDefaultValueSql("GETDATE()")
+               .IsRequired();
+
+        builder.Property(x => x.FechaFin);
+
+        builder.Property(x => x.Observaciones)
+               .HasMaxLength(500);
+
+        // Relación con el Relevo (Padre)
+        builder.HasOne(x => x.Relevo)
+               .WithMany(r => r.Rondines)
+               .HasForeignKey(x => x.RelevodId)
+               .OnDelete(DeleteBehavior.Restrict);
+
+        // Constraint UNIQUE: Evita que existan dos rondines de 'Entrega' en un mismo Relevo
+        builder.HasIndex(x => new { x.RelevodId, x.TipoRondin }).IsUnique();
+
+        // Índice para búsquedas rápidas por Relevo
+        builder.HasIndex(x => x.RelevodId);
     }
 }

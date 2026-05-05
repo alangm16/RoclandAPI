@@ -2,28 +2,28 @@
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using RCD.Mob.GuardiaRelevo.Domain.Entities;
 
-namespace RCD.Mob.GuardiaRelevo.Infrastructure.Data.Configurations
+namespace RCD.Mob.GuardiaRelevo.Infrastructure.Data.Configurations;
+
+public class UsuarioConfiguration : IEntityTypeConfiguration<Usuario>
 {
-    public class UsuarioConfiguration : IEntityTypeConfiguration<Usuario>
+    public void Configure(EntityTypeBuilder<Usuario> builder)
     {
-        public void Configure(EntityTypeBuilder<Usuario> b)
-        {
-            b.ToTable("TBL_ROCLAND_RELEVO_USUARIOS");
-            b.HasKey(x => x.Id);
-            b.Property(x => x.Usuario_).HasColumnName("Usuario").HasMaxLength(60).IsRequired();
-            b.HasIndex(x => x.Usuario_).IsUnique();
-            b.Property(x => x.NombreCompleto).HasMaxLength(150).IsRequired();
-            b.Property(x => x.NumeroEmpleado).HasMaxLength(30).IsRequired();
-            b.HasIndex(x => x.NumeroEmpleado).IsUnique();
-            b.Property(x => x.Email).HasMaxLength(150);
-            b.Property(x => x.PasswordHash).HasMaxLength(256).IsRequired();
-            b.Property(x => x.QRCode).HasMaxLength(200).IsRequired();
-            b.HasIndex(x => x.QRCode).IsUnique();
-            b.Property(x => x.Rol).HasMaxLength(20).IsRequired();
-            b.Property(x => x.DeviceToken).HasMaxLength(500);
-            b.Property(x => x.FcmToken).HasMaxLength(255);
-            b.Property(x => x.Activo).HasDefaultValue(true);
-            b.Property(x => x.FechaCreacion).HasDefaultValueSql("GETDATE()");
-        }
+        builder.ToTable("TBL_ROCLAND_RELEVO_USUARIOS");
+
+        // 1. Definimos la nueva llave primaria
+        builder.HasKey(u => u.SuperAdminUsuarioId);
+
+        // 2. Le decimos a EF Core que NO la autogenere (IDENTITY), porque el ID viene de SuperAdmin
+        builder.Property(u => u.SuperAdminUsuarioId)
+               .ValueGeneratedNever();
+
+        // 3. Mapeo del resto de propiedades
+        builder.Property(u => u.NumeroEmpleado).HasMaxLength(30).IsRequired();
+        builder.HasIndex(u => u.NumeroEmpleado).IsUnique();
+
+        builder.Property(u => u.RolLocal).HasMaxLength(20).IsRequired();
+
+        builder.Property(u => u.Activo).HasDefaultValue(true);
+        builder.Property(u => u.FechaCreacion).HasDefaultValueSql("GETDATE()");
     }
 }

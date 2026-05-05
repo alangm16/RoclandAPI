@@ -38,8 +38,9 @@ public class ChecklistService : IChecklistService
 
         await _checklist.GuardarRespuestasAsync(respuestas, ct);
 
-        if (request.NotasFinales is not null)
-            await _checklist.ActualizarNotasFinalesAsync(request.RondinId, request.NotasFinales, ct);
+        // 👇 Aquí aplicamos el cambio a Observaciones
+        if (request.Observaciones is not null)
+            await _checklist.ActualizarObservacionesAsync(request.RondinId, request.Observaciones, ct);
 
         return true;
     }

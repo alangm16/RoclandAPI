@@ -26,10 +26,11 @@ public class ChecklistRepository : IChecklistRepository
         await _db.SaveChangesAsync(ct);
     }
 
-    public async Task ActualizarNotasFinalesAsync(int rondinId, string? notas, CancellationToken ct = default)
+    // Método actualizado para afectar a "Observaciones"
+    public async Task ActualizarObservacionesAsync(int rondinId, string? observaciones, CancellationToken ct = default)
     {
         await _db.Rondines
                  .Where(r => r.Id == rondinId)
-                 .ExecuteUpdateAsync(s => s.SetProperty(r => r.NotasFinales, notas), ct);
+                 .ExecuteUpdateAsync(s => s.SetProperty(r => r.Observaciones, observaciones), ct);
     }
 }

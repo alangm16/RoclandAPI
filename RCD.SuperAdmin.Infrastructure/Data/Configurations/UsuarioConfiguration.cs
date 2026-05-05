@@ -20,6 +20,9 @@ namespace RCD.SuperAdmin.Infrastructure.Data.Configurations
             builder.Property(u => u.Email).HasMaxLength(150);
             builder.Property(u => u.PasswordHash).HasMaxLength(256).IsRequired();
             builder.Property(u => u.QRCode).HasMaxLength(200);
+            builder.HasIndex(x => x.QRCode)
+                   .IsUnique()
+                   .HasFilter("[QRCode] IS NOT NULL");
             builder.HasIndex(u => u.QRCode).IsUnique();
             builder.Property(u => u.DeviceToken).HasMaxLength(500);
             builder.Property(u => u.FcmToken).HasMaxLength(255);

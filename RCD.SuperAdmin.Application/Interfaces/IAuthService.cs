@@ -7,5 +7,5 @@ public interface IAuthService
     Task<LoginResponse?> LoginAsync(LoginRequest request, string? ipAddress);
     Task<RefreshTokenResponse?> RefreshAsync(string refreshToken, string? ipAddress);
     Task RevocarRefreshTokenAsync(string refreshToken);
-    Task<LoginResponse> LoginConQrAsync(string qrCode, CancellationToken ct = default);
+    Task<LoginResponse?> LoginConQrAsync(string qrCode, string? ipAddress = null, string? plataforma = null, CancellationToken ct = default);
 }

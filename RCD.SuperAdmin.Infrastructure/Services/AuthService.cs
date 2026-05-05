@@ -150,31 +150,62 @@ public class AuthService(
         await db.SaveChangesAsync();
     }
 
-    public async Task<LoginResponse> LoginConQrAsync(string qrCode, CancellationToken ct = default)
+    public async Task<LoginResponse?> LoginConQrAsync(string qrCode, string? ipAddress = null, string? plataforma = "Mobile", CancellationToken ct = default)
     {
-        // 1. Buscamos al usuario por su QR en lugar de su Username
-        var usuario = await _context.Usuarios
-            // IMPORTANTE: Asegúrate de incluir los roles y proyectos como lo haces en tu Login normal
-            // .Include(u => u.UsuarioRoles)... 
+        // 1. Buscar al usuario por código QR asegurando traer sus Roles
+        var usuario = await db.Usuarios
+            .Include(u => u.Roles).ThenInclude(ur => ur.Rol)
             .FirstOrDefaultAsync(u => u.QRCode == qrCode && u.Activo, ct);
 
-        if (usuario == null)
+        if (usuario is null)
         {
-            throw new UnauthorizedAccessException("Código QR no válido o usuario inactivo.");
+            await RegistrarLogAsync(null, "QR_LOGIN", false,
+                ipAddress, plataforma, "Código QR no encontrado o usuario inactivo");
+            return null;
         }
 
-        // 2. Generamos los tokens igual que en tu Login tradicional
-        var accessToken = _jwtTokenService.GenerateAccessToken(usuario); // Ajusta al nombre real de tu método
-        var refreshToken = _jwtTokenService.GenerateRefreshToken();
-
-        // 3. Guardamos el Refresh Token
-        usuario.RefreshTokens.Add(refreshToken);
-        await _context.SaveChangesAsync(ct);
-
-        return new LoginResponse
+        // 2. Verificar si la cuenta está bloqueada (reutilizando tu lógica)
+        if (usuario.BloqueadoHasta.HasValue && usuario.BloqueadoHasta > DateTime.UtcNow)
         {
-            AccessToken = accessToken,
-            RefreshToken = refreshToken.Token
-        };
+            await RegistrarLogAsync(usuario.Id, usuario.Username, false,
+                ipAddress, plataforma, $"Cuenta bloqueada hasta {usuario.BloqueadoHasta:HH:mm}");
+            return null;
+        }
+
+        // --- Login exitoso ---
+        usuario.IntentosFallidos = 0;
+        usuario.BloqueadoHasta = null;
+        usuario.UltimoAcceso = DateTime.UtcNow;
+
+        // 3. Obtener Roles y generar tokens usando TU tokenService
+        var roles = usuario.Roles.Select(ur => ur.Rol.Nombre).ToList();
+        var accessToken = tokenService.GenerarAccessToken(usuario.Id, usuario.Username, roles);
+        var expira = tokenService.ObtenerExpiracionAccessToken();
+        var refreshTokenStr = tokenService.GenerarRefreshToken();
+
+        // 4. Guardar el Refresh Token en la BD
+        db.RefreshTokens.Add(new RefreshToken
+        {
+            UsuarioId = usuario.Id,
+            Token = refreshTokenStr,
+            FechaExpiracion = DateTime.UtcNow.AddDays(30),
+            IpCreacion = ipAddress,
+            DispositivoInfo = "Autenticación por QR"
+        });
+
+        await db.SaveChangesAsync(ct);
+
+        // 5. Registrar el log de éxito
+        await RegistrarLogAsync(usuario.Id, usuario.Username, true,
+            ipAddress, plataforma, "Login QR exitoso");
+
+        // 6. Resolver proyectos usando TU permisosService (Esto evita el 403 en la app)
+        var proyectos = await permisosService.ResolverPermisosEfectivosAsync(usuario.Id);
+
+        // 7. Retornar la respuesta usando el constructor exacto de tu DTO
+        return new LoginResponse(
+            accessToken, refreshTokenStr, expira,
+            usuario.NombreCompleto, usuario.Username,
+            roles, proyectos);
     }
 }

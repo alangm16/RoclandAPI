@@ -40,22 +40,18 @@ public class AuthController(IAuthService authService) : ControllerBase
     }
 
     [HttpPost("qr-login")]
-    [AllowAnonymous]
-    public async Task<ActionResult<ApiResponse<LoginResponse>>> QrLogin(
-    [FromBody] QrLoginRequest request,
-    CancellationToken ct)
+    public async Task<IActionResult> QrLogin([FromBody] QrLoginRequest request, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(request.QrCode))
-            return BadRequest(ApiResponse<LoginResponse>.Fail("El código QR es requerido."));
+            return BadRequest(new { mensaje = "El código QR es requerido." });
 
-        try
-        {
-            var response = await _authService.LoginConQrAsync(request.QrCode, ct);
-            return Ok(ApiResponse<LoginResponse>.Ok(response, "Login exitoso."));
-        }
-        catch (UnauthorizedAccessException ex)
-        {
-            return Unauthorized(ApiResponse<LoginResponse>.Fail(ex.Message));
-        }
+        var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
+
+        // Usamos authService (sin guion bajo) y le pasamos los datos para el Log
+        var result = await authService.LoginConQrAsync(request.QrCode, ip, "Mobile", ct);
+
+        return result is null
+            ? Unauthorized(new { mensaje = "Código QR inválido, usuario inactivo o cuenta bloqueada." })
+            : Ok(result);
     }
 }

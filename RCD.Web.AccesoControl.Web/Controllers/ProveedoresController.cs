@@ -25,8 +25,14 @@ public class ProveedoresController : ControllerBase
         if (!request.ConsentimientoFirmado)
             return BadRequest("El consentimiento es obligatorio.");
 
+        // ── FIX: Definimos el ID del Perfil "Kiosco"
+        int perfilKioskoId = 1;
+
         var ip = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
-        var result = await _acceso.RegistrarProveedorAsync(request, ip);
+
+        // ── FIX: Pasamos el perfilKioskoId en la llamada
+        var result = await _acceso.RegistrarProveedorAsync(request, perfilKioskoId, ip);
+
         return Ok(result);
     }
 }

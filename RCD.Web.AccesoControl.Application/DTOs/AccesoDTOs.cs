@@ -1,0 +1,62 @@
+﻿using System.ComponentModel.DataAnnotations;
+
+namespace RCD.Web.AccesoControl.Application.DTOs
+{
+    // ==========================================
+    // RESPUESTAS (GET / READ)
+    // ==========================================
+
+    public record SolicitudPendienteResponse(
+        int SolicitudId,
+        int RegistroId,
+        string TipoRegistro,
+        int PersonaId,
+        string NombrePersona,
+        string? Empresa,
+        string NumeroIdentificacion,
+        string TipoID,
+        string Motivo,
+        string Area,
+        DateTime FechaSolicitud,
+        string? Placas
+    );
+
+    public record AccesoActivoResponse(
+        int RegistroId,
+        string TipoRegistro,
+        string NombrePersona,
+        string? Empresa,
+        string NumeroGafete,
+        DateTime FechaEntrada,
+        string Area,
+        double MinutosLlevaDentro
+    );
+
+    public record GafeteDisponibleResponse(
+        int Id,
+        string Codigo
+    );
+
+    // ==========================================
+    // PETICIONES (POST / ACTION)
+    // ==========================================
+
+    public record AprobarSolicitudRequest(
+        [Required, Range(1, int.MaxValue)] int SolicitudId,
+        [Required, Range(1, int.MaxValue)] int GafeteId
+    );
+
+    public record RechazarSolicitudRequest(
+        [Required, Range(1, int.MaxValue)] int SolicitudId,
+        [Required, StringLength(500, MinimumLength = 3)] string Motivo
+    );
+
+    public record MarcarSalidaRequest(
+        [Required, Range(1, int.MaxValue)] int RegistroId,
+        [Required] string TipoRegistro // "Visitante" o "Proveedor"
+    );
+
+    public record RegistrarFcmTokenRequest(
+        [Required, StringLength(255, MinimumLength = 10)] string FcmToken
+    );
+}

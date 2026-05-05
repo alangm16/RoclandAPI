@@ -7,7 +7,6 @@ using RCD.Web.AccesoControl.Infrastructure.Persistence;
 using RCD.Web.AccesoControl.Application.DTOs;
 using RCD.Web.AccesoControl.Domain.Models.Entities;
 using RCD.Web.AccesoControl.Application.Interfaces;
-using Microsoft.EntityFrameworkCore.Storage.ValueConversion.Internal;
 using Microsoft.Extensions.Caching.Memory;
 
 namespace RCD.Web.AccesoControl.Web.Services;
@@ -33,7 +32,7 @@ public class AdminService : IAdminService
     {
         var ahoraLocal = DateTime.UtcNow.Add(_offsetMexico);
         var hoyLocal = ahoraLocal.Date;
-        var inicioDiaUtc = hoyLocal.AddHours(6); // UTC exacto de la medianoche local
+        var inicioDiaUtc = hoyLocal.AddHours(6);
         var finDiaUtc = inicioDiaUtc.AddDays(1);
 
         var dentroAhora = await _db.RegistrosVisitantes
@@ -50,7 +49,6 @@ public class AdminService : IAdminService
         var pendientes = await _db.SolicitudesPendientes
             .CountAsync(s => s.Estado == "Pendiente");
 
-        // Se calcula dinámicamente para que lea de inmediato los 14 registros que ya tienes
         var tiemposVis = await _db.RegistrosVisitantes
             .Where(r => r.FechaEntrada >= inicioDiaUtc && r.FechaEntrada < finDiaUtc && r.FechaSalida != null)
             .Select(r => new { r.FechaEntrada, r.FechaSalida })
@@ -83,7 +81,6 @@ public class AdminService : IAdminService
         var inicioDiaUtc = hoyLocal.AddHours(6);
         var finDiaUtc = inicioDiaUtc.AddDays(1);
 
-        // Traemos las fechas a memoria para convertirlas a hora de Torreón correctamente
         var visFechas = await _db.RegistrosVisitantes
             .Where(r => r.FechaEntrada >= inicioDiaUtc && r.FechaEntrada < finDiaUtc)
             .Select(r => r.FechaEntrada)
@@ -102,7 +99,7 @@ public class AdminService : IAdminService
             .GroupBy(f => f.Add(_offsetMexico).Hour)
             .ToDictionary(g => g.Key, g => g.Count());
 
-        return Enumerable.Range(6, 16) // 06:00 - 21:00
+        return Enumerable.Range(6, 16)
             .Select(h => new FlujoPorHoraDto(h,
                 visAgrupados.GetValueOrDefault(h, 0) +
                 provAgrupados.GetValueOrDefault(h, 0)));
@@ -147,7 +144,7 @@ public class AdminService : IAdminService
     public async Task<IEnumerable<AreaVisitadaDto>> ObtenerAreasMasVisitadasAsync(int dias = 30)
     {
         var ahoraLocal = DateTime.UtcNow.Add(_offsetMexico);
-        var desdeUtc = ahoraLocal.Date.AddDays(-dias).AddHours(6); // UTC exacto del inicio del día local
+        var desdeUtc = ahoraLocal.Date.AddDays(-dias).AddHours(6);
 
         var topAreas = await _db.RegistrosVisitantes
             .Where(r => r.FechaEntrada >= desdeUtc)
@@ -173,15 +170,15 @@ public class AdminService : IAdminService
     string? busqueda, string? tipo, DateTime? desde, DateTime? hasta,
     int pagina, int porPagina)
     {
-        hasta = hasta?.Date.AddDays(1); 
+        hasta = hasta?.Date.AddDays(1);
 
-        // Función para construir la consulta base de visitantes
+        // ── FIX: Usamos PerfilEntrada en los Includes
         IQueryable<RegistroVisitante> BaseVisitantes() =>
             _db.RegistrosVisitantes
                 .Include(r => r.Persona).ThenInclude(p => p.TipoIdentificacion)
                 .Include(r => r.Area)
                 .Include(r => r.Motivo)
-                .Include(r => r.GuardiaEntrada)
+                .Include(r => r.PerfilEntrada)
                 .Include(r => r.Gafete)
                 .Where(r => (tipo == null || tipo == "Visitante") &&
                             (desde == null || r.FechaEntrada >= desde) &&
@@ -190,12 +187,11 @@ public class AdminService : IAdminService
                              r.Persona.Nombre.Contains(busqueda) ||
                              r.Persona.NumeroIdentificacion.Contains(busqueda)));
 
-        // Función para construir la consulta base de proveedores
         IQueryable<RegistroProveedor> BaseProveedores() =>
             _db.RegistrosProveedores
                 .Include(r => r.Persona).ThenInclude(p => p.TipoIdentificacion)
                 .Include(r => r.Motivo)
-                .Include(r => r.GuardiaEntrada)
+                .Include(r => r.PerfilEntrada)
                 .Include(r => r.Gafete)
                 .Where(r => (tipo == null || tipo == "Proveedor") &&
                             (desde == null || r.FechaEntrada >= desde) &&
@@ -205,7 +201,6 @@ public class AdminService : IAdminService
                              r.Persona.NumeroIdentificacion.Contains(busqueda) ||
                              (r.Persona.Empresa != null && r.Persona.Empresa.Contains(busqueda))));
 
-        // Ejecutar ambas consultas en paralelo (solo si ambos tipos están incluidos)
         List<HistorialAccesoDto> listaVisitantes = new();
         List<HistorialAccesoDto> listaProveedores = new();
 
@@ -225,7 +220,7 @@ public class AdminService : IAdminService
                     r.MinutosEstancia,
                     r.EstadoAcceso,
                     r.Gafete != null ? r.Gafete.Codigo : null,
-                    r.GuardiaEntrada.Nombre))
+                    r.PerfilEntrada != null ? r.PerfilEntrada.NombreCompleto : "Desconocido")) // ── FIX: Usamos NombreCompleto
                 .ToListAsync();
         }
 
@@ -245,11 +240,10 @@ public class AdminService : IAdminService
                     r.MinutosEstancia,
                     r.EstadoAcceso,
                     r.Gafete != null ? r.Gafete.Codigo : null,
-                    r.GuardiaEntrada.Nombre))
+                    r.PerfilEntrada != null ? r.PerfilEntrada.NombreCompleto : "Desconocido")) // ── FIX: Usamos NombreCompleto
                 .ToListAsync();
         }
 
-        // Combinar en memoria
         var union = listaVisitantes.Concat(listaProveedores)
                                    .OrderByDescending(r => r.FechaEntrada)
                                    .ToList();
@@ -261,9 +255,9 @@ public class AdminService : IAdminService
 
         var items = itemsUtc.Select(r => new HistorialAccesoDto(
             r.Id, r.Tipo, r.Nombre, r.Empresa, r.NumeroIdentificacion, r.Area, r.Motivo,
-            r.FechaEntrada.Add(_offsetMexico), 
-            r.FechaSalida.HasValue ? r.FechaSalida.Value.Add(_offsetMexico) : null, 
-            r.MinutosEstancia, r.EstadoAcceso, r.CodigoGafete, r.Guardia
+            r.FechaEntrada.Add(_offsetMexico),
+            r.FechaSalida.HasValue ? r.FechaSalida.Value.Add(_offsetMexico) : null,
+            r.MinutosEstancia, r.EstadoAcceso, r.CodigoGafete, r.Guardia // Nota: la variable r.Guardia en el record tiene el NombreCompleto
         )).ToList();
 
         return (items, total);
@@ -277,7 +271,6 @@ public class AdminService : IAdminService
             .AsNoTracking()
             .Where(p => p.Activo);
 
-        // Aplicar filtro de búsqueda si existe
         if (!string.IsNullOrWhiteSpace(busqueda))
         {
             busqueda = busqueda.ToLower();
@@ -290,7 +283,6 @@ public class AdminService : IAdminService
 
         var total = await query.CountAsync();
 
-        // Mantenemos el orden por TotalVisitas para seguir viendo a los más "frecuentes" primero
         var items = await query
             .OrderByDescending(p => p.TotalVisitas)
             .Skip((pagina - 1) * porPagina)
@@ -337,7 +329,7 @@ public class AdminService : IAdminService
         var visitas = await _db.RegistrosVisitantes
             .Include(r => r.Area)
             .Include(r => r.Motivo)
-            .Include(r => r.GuardiaEntrada)
+            .Include(r => r.PerfilEntrada) // ── FIX
             .Include(r => r.Gafete)
             .Where(r => r.PersonaId == personaId)
             .Select(r => new HistorialAccesoDto(
@@ -353,12 +345,12 @@ public class AdminService : IAdminService
                 r.MinutosEstancia,
                 r.EstadoAcceso,
                 r.Gafete != null ? r.Gafete.Codigo : null,
-                r.GuardiaEntrada.Nombre))
+                r.PerfilEntrada != null ? r.PerfilEntrada.NombreCompleto : "Desconocido"))
             .ToListAsync();
 
         var proveedores = await _db.RegistrosProveedores
             .Include(r => r.Motivo)
-            .Include(r => r.GuardiaEntrada)
+            .Include(r => r.PerfilEntrada) // ── FIX
             .Include(r => r.Gafete)
             .Where(r => r.PersonaId == personaId)
             .Select(r => new HistorialAccesoDto(
@@ -374,73 +366,56 @@ public class AdminService : IAdminService
                 r.MinutosEstancia,
                 r.EstadoAcceso,
                 r.Gafete != null ? r.Gafete.Codigo : null,
-                r.GuardiaEntrada.Nombre))
+                r.PerfilEntrada != null ? r.PerfilEntrada.NombreCompleto : "Desconocido"))
             .ToListAsync();
 
         return visitas.Concat(proveedores)
                       .OrderByDescending(r => r.FechaEntrada);
     }
 
-    // ── Guardias ───────────────────────────────────────────────────────
+    // ── Guardias (Refactorizado a Perfiles) ────────────────────────────
     public async Task<(IEnumerable<GuardiaListDto> Items, int Total)> ObtenerGuardiasAsync(string? busqueda, int pagina, int porPagina)
     {
-        var query = _db.Guardias.AsQueryable().AsNoTracking();
+        // ── FIX: Consultamos la tabla Perfiles
+        var query = _db.Perfiles.AsQueryable().AsNoTracking();
 
         if (!string.IsNullOrWhiteSpace(busqueda))
         {
             busqueda = busqueda.ToLower();
             query = query.Where(g =>
-                g.Nombre.ToLower().Contains(busqueda) ||
-                g.Usuario.ToLower().Contains(busqueda));
+                g.NombreCompleto.ToLower().Contains(busqueda) ||
+                (g.NumeroEmpleado != null && g.NumeroEmpleado.ToLower().Contains(busqueda)));
         }
 
         var total = await query.CountAsync();
 
+        // ── FIX: Adaptamos el mapeo al DTO original (reutilizamos la propiedad Usuario para mostrar el TipoPerfil o No.Empleado)
         var items = await query
-        .OrderByDescending(g => g.Activo)
-        .ThenBy(g => g.Nombre)
-        .Skip((pagina - 1) * porPagina)
-        .Take(porPagina)
-        .Select(g => new GuardiaListDto(
-            g.Id,
-            g.Nombre,
-            g.Usuario,
-            g.Activo,
-            g.FechaCreacion
-        ))
-        .ToListAsync();
+            .OrderByDescending(g => g.Activo)
+            .ThenBy(g => g.NombreCompleto)
+            .Skip((pagina - 1) * porPagina)
+            .Take(porPagina)
+            .Select(g => new GuardiaListDto(
+                g.Id,
+                g.NombreCompleto,
+                g.NumeroEmpleado ?? g.TipoPerfil,
+                g.Activo,
+                g.FechaCreacion
+            ))
+            .ToListAsync();
 
         return (items, total);
     }
 
-    public async Task<bool> CrearGuardiaAsync(GuardiaCreateDto dto)
-    {
-        if (await _db.Guardias.AnyAsync(g => g.Usuario == dto.Usuario))
-            return false;
-
-        _db.Guardias.Add(new Guardia
-        {
-            Nombre = dto.Nombre,
-            Usuario = dto.Usuario,
-            PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password)
-        });
-        return await _db.SaveChangesAsync() > 0;
-    }
-
     public async Task<bool> ActualizarGuardiaAsync(int id, GuardiaUpdateDto dto)
     {
-        var guardia = await _db.Guardias.FindAsync(id);
-        if (guardia is null) return false;
-        guardia.Nombre = dto.Nombre;
-        guardia.Activo = dto.Activo;
-        return await _db.SaveChangesAsync() > 0;
-    }
+        // Solo actualizamos propiedades operativas, ya que NombreCompleto viene de SuperAdmin
+        var perfil = await _db.Perfiles.FindAsync(id);
+        if (perfil is null) return false;
 
-    public async Task<bool> ResetPasswordGuardiaAsync(int id, string nuevaPassword)
-    {
-        var guardia = await _db.Guardias.FindAsync(id);
-        if (guardia is null) return false;
-        guardia.PasswordHash = BCrypt.Net.BCrypt.HashPassword(nuevaPassword);
+        perfil.Activo = dto.Activo;
+        // perfil.Turno = dto.Turno; // (Si el frontend lo enviara)
+
         return await _db.SaveChangesAsync() > 0;
     }
 
@@ -458,7 +433,7 @@ public class AdminService : IAdminService
         _db.Areas.Add(new Area { Nombre = dto.Nombre });
         var ok = await _db.SaveChangesAsync() > 0;
 
-        if (ok) _cache.Remove(CacheKeyAreas); 
+        if (ok) _cache.Remove(CacheKeyAreas);
         return ok;
     }
 
@@ -486,7 +461,7 @@ public class AdminService : IAdminService
         _db.MotivosVisita.Add(new MotivoVisita { Nombre = dto.Nombre });
         var ok = await _db.SaveChangesAsync() > 0;
 
-        if (ok) _cache.Remove(CacheKeyMotivos); 
+        if (ok) _cache.Remove(CacheKeyMotivos);
         return ok;
     }
 
@@ -497,7 +472,7 @@ public class AdminService : IAdminService
         motivo.Activo = !motivo.Activo;
         var ok = await _db.SaveChangesAsync() > 0;
 
-        if (ok) _cache.Remove(CacheKeyMotivos); 
+        if (ok) _cache.Remove(CacheKeyMotivos);
         return ok;
     }
 
@@ -514,7 +489,7 @@ public class AdminService : IAdminService
         _db.TiposIdentificacion.Add(new TipoIdentificacion { Nombre = dto.Nombre });
         var ok = await _db.SaveChangesAsync() > 0;
 
-        if (ok) _cache.Remove(CacheKeyTiposId); 
+        if (ok) _cache.Remove(CacheKeyTiposId);
         return ok;
     }
 
@@ -525,7 +500,7 @@ public class AdminService : IAdminService
         tipo.Activo = !tipo.Activo;
         var ok = await _db.SaveChangesAsync() > 0;
 
-        if (ok) _cache.Remove(CacheKeyTiposId); 
+        if (ok) _cache.Remove(CacheKeyTiposId);
         return ok;
     }
 
@@ -629,20 +604,19 @@ public class AdminService : IAdminService
                 {
                     table.ColumnsDefinition(cols =>
                     {
-                        cols.ConstantColumn(60);  // Tipo
-                        cols.RelativeColumn(2);   // Nombre
-                        cols.RelativeColumn(1.5f);// Empresa
-                        cols.RelativeColumn(1.5f);// ID
-                        cols.RelativeColumn(1.5f);// Área
-                        cols.RelativeColumn(1.5f);// Motivo
-                        cols.ConstantColumn(45);  // Entrada
-                        cols.ConstantColumn(45);  // Salida
-                        cols.ConstantColumn(40);  // Min
-                        cols.ConstantColumn(60);  // Estado
-                        cols.ConstantColumn(40);  // Gafete
+                        cols.ConstantColumn(60);
+                        cols.RelativeColumn(2);
+                        cols.RelativeColumn(1.5f);
+                        cols.RelativeColumn(1.5f);
+                        cols.RelativeColumn(1.5f);
+                        cols.RelativeColumn(1.5f);
+                        cols.ConstantColumn(45);
+                        cols.ConstantColumn(45);
+                        cols.ConstantColumn(40);
+                        cols.ConstantColumn(60);
+                        cols.ConstantColumn(40);
                     });
 
-                    // Encabezado
                     table.Header(header =>
                     {
                         var headerStyle = new TextStyle().FontColor(Colors.White).Bold().FontSize(8);
@@ -660,7 +634,6 @@ public class AdminService : IAdminService
                         header.Cell().Element(HeaderCellStyle).Text("Gafete").Style(headerStyle);
                     });
 
-                    // Filas
                     bool alt = false;
                     foreach (var item in lista)
                     {
@@ -674,7 +647,6 @@ public class AdminService : IAdminService
                             _ => "#D97706"
                         };
 
-                        // Función local dentro del foreach para capturar bg y estadoColor
                         void Cell(string text, string? color = null)
                         {
                             table.Cell().Background(bg).Padding(4)

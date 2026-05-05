@@ -19,6 +19,7 @@ public class AccesoService : IAccesoService
     private readonly IFcmService _fcm;
     private static readonly TimeSpan _offsetMexico = TimeSpan.FromHours(-6);
     private readonly IPublisher _publisher;
+
     public AccesoService(
         AccesoControlWebDbContext db,
         IHubContext<AccesoControlHub> hub,
@@ -56,7 +57,7 @@ public class AccesoService : IAccesoService
     }
 
     public async Task<VisitanteResponse> RegistrarVisitanteAsync(
-        CrearVisitanteRequest req, string ip)
+        CrearVisitanteRequest req, int perfilEntradaId, string ip) // ── FIX: parámetro perfilEntradaId
     {
         var persona = await ObtenerOCrearPersonaAsync(
             req.TipoIdentificacionId,
@@ -72,7 +73,7 @@ public class AccesoService : IAccesoService
             AreaId = req.AreaId,
             MotivoId = req.MotivoId,
             FechaEntrada = DateTime.UtcNow,
-            GuardiaEntradaId = 1,
+            PerfilEntradaId = perfilEntradaId, // ── FIX: Usar perfilEntradaId en lugar de GuardiaEntradaId = 1
             EstadoAcceso = "Pendiente",
             ConsentimientoFirmado = req.ConsentimientoFirmado,
             Observaciones = req.Observaciones,
@@ -81,20 +82,18 @@ public class AccesoService : IAccesoService
         };
 
         _db.RegistrosVisitantes.Add(registro);
+        await _db.SaveChangesAsync(); // Guardamos primero para obtener registro.Id
 
         var solicitud = new SolicitudPendiente
         {
             TipoRegistro = "Visitante",
-            RegistroId = 0,
+            RegistroId = registro.Id,
             PersonaId = persona.Id,
             FechaSolicitud = DateTime.UtcNow,
             Estado = "Pendiente",
+            PerfilId = perfilEntradaId // ── FIX: Asignamos el perfil a la solicitud
         };
         _db.SolicitudesPendientes.Add(solicitud);
-
-        await _db.SaveChangesAsync();
-
-        solicitud.RegistroId = registro.Id;
         await _db.SaveChangesAsync();
 
         await ActualizarContadorAsync(persona.Id);
@@ -140,7 +139,7 @@ public class AccesoService : IAccesoService
     }
 
     public async Task<ProveedorResponse> RegistrarProveedorAsync(
-        CrearProveedorRequest req, string ip)
+        CrearProveedorRequest req, int perfilEntradaId, string ip) // ── FIX: parámetro perfilEntradaId
     {
         var persona = await ObtenerOCrearPersonaAsync(
             req.TipoIdentificacionId,
@@ -157,7 +156,7 @@ public class AccesoService : IAccesoService
             FechaEntrada = DateTime.UtcNow,
             UnidadPlacas = req.UnidadPlacas,
             FacturaRemision = req.FacturaRemision,
-            GuardiaEntradaId = 1,
+            PerfilEntradaId = perfilEntradaId, // ── FIX: Usar perfilEntradaId
             EstadoAcceso = "Pendiente",
             ConsentimientoFirmado = req.ConsentimientoFirmado,
             Observaciones = req.Observaciones,
@@ -166,27 +165,24 @@ public class AccesoService : IAccesoService
         };
 
         _db.RegistrosProveedores.Add(registro);
+        await _db.SaveChangesAsync();
 
         var solicitud = new SolicitudPendiente
         {
             TipoRegistro = "Proveedor",
-            RegistroId = 0,
+            RegistroId = registro.Id,
             PersonaId = persona.Id,
             FechaSolicitud = DateTime.UtcNow,
             Estado = "Pendiente",
+            PerfilId = perfilEntradaId // ── FIX: Asignamos el perfil
         };
         _db.SolicitudesPendientes.Add(solicitud);
-
-        await _db.SaveChangesAsync();
-
-        solicitud.RegistroId = registro.Id;
         await _db.SaveChangesAsync();
 
         await ActualizarContadorAsync(persona.Id);
 
         var motivo = await _db.MotivosVisita.FindAsync(req.MotivoId);
 
-        // ── FIX 1: mismos nombres de campo que NuevaSolicitudEvent
         await _hub.Clients.All.SendAsync("NuevaSolicitud", new NuevaSolicitudEvent(
             SolicitudId: solicitud.Id,
             RegistroId: registro.Id,
@@ -219,6 +215,7 @@ public class AccesoService : IAccesoService
 
     public async Task<IEnumerable<SolicitudPendienteResponse>> ObtenerSolicitudesPendientesAsync()
     {
+        // Se mantiene igual (Solo lecturas)
         var solicitudes = await _db.SolicitudesPendientes
             .Include(s => s.Persona).ThenInclude(p => p.TipoIdentificacion)
             .Where(s => s.Estado == "Pendiente")
@@ -273,6 +270,7 @@ public class AccesoService : IAccesoService
 
     public async Task<SolicitudPendienteResponse?> ObtenerSolicitudPorIdAsync(int solicitudId)
     {
+        // Se mantiene igual
         var s = await _db.SolicitudesPendientes
             .Include(x => x.Persona).ThenInclude(p => p.TipoIdentificacion)
             .FirstOrDefaultAsync(x => x.Id == solicitudId && x.Estado == "Pendiente");
@@ -321,6 +319,7 @@ public class AccesoService : IAccesoService
 
     public async Task<IEnumerable<AccesoActivoResponse>> ObtenerAccesosActivosAsync()
     {
+        // Se mantiene igual
         var respuestas = new List<AccesoActivoResponse>();
         var ahoraServidor = DateTime.UtcNow;
 
@@ -330,12 +329,13 @@ public class AccesoService : IAccesoService
             .Include(r => r.Gafete)
             .Where(r => r.EstadoAcceso == "Aprobado" && r.FechaSalida == null)
             .ToListAsync();
+
         respuestas.AddRange(visitantes.Select(v => new AccesoActivoResponse(
             RegistroId: v.Id,
             TipoRegistro: "Visitante",
             NombrePersona: v.Persona.Nombre,
             Empresa: v.Persona.Empresa,
-            NumeroGafete: v.Gafete?.Codigo ?? "",       // <-- Código del gafete
+            NumeroGafete: v.Gafete?.Codigo ?? "",
             FechaEntrada: v.FechaEntrada,
             Area: v.Area.Nombre,
             MinutosLlevaDentro: (ahoraServidor - v.FechaEntrada).TotalMinutes
@@ -346,6 +346,7 @@ public class AccesoService : IAccesoService
             .Include(r => r.Gafete)
              .Where(r => r.EstadoAcceso == "Aprobado" && r.FechaSalida == null)
              .ToListAsync();
+
         respuestas.AddRange(proveedores.Select(p => new AccesoActivoResponse(
             RegistroId: p.Id,
             TipoRegistro: "Proveedor",
@@ -362,6 +363,7 @@ public class AccesoService : IAccesoService
 
     public async Task<IEnumerable<AccesoActivoResponse>> ObtenerAccesosActivosZonaAsync()
     {
+        // Se mantiene igual
         var respuestas = new List<AccesoActivoResponse>();
         var ahoraServidor = DateTime.UtcNow;
 
@@ -371,12 +373,13 @@ public class AccesoService : IAccesoService
             .Include(r => r.Gafete)
             .Where(r => r.EstadoAcceso == "Aprobado" && r.FechaSalida == null)
             .ToListAsync();
+
         respuestas.AddRange(visitantes.Select(v => new AccesoActivoResponse(
             RegistroId: v.Id,
             TipoRegistro: "Visitante",
             NombrePersona: v.Persona.Nombre,
             Empresa: v.Persona.Empresa,
-            NumeroGafete: v.Gafete?.Codigo ?? "",       // <-- Código del gafete
+            NumeroGafete: v.Gafete?.Codigo ?? "",
             FechaEntrada: v.FechaEntrada.Add(_offsetMexico),
             Area: v.Area.Nombre,
             MinutosLlevaDentro: (ahoraServidor - v.FechaEntrada).TotalMinutes
@@ -387,6 +390,7 @@ public class AccesoService : IAccesoService
             .Include(r => r.Gafete)
              .Where(r => r.EstadoAcceso == "Aprobado" && r.FechaSalida == null)
              .ToListAsync();
+
         respuestas.AddRange(proveedores.Select(p => new AccesoActivoResponse(
             RegistroId: p.Id,
             TipoRegistro: "Proveedor",
@@ -401,7 +405,7 @@ public class AccesoService : IAccesoService
         return respuestas.OrderByDescending(r => r.FechaEntrada);
     }
 
-    public async Task<bool> AprobarSolicitudAsync(AprobarSolicitudRequest request)
+    public async Task<bool> AprobarSolicitudAsync(AprobarSolicitudRequest request, int perfilId) // ── FIX: parámetro perfilId
     {
         await using var transaction = await _db.Database.BeginTransactionAsync();
         try
@@ -410,26 +414,23 @@ public class AccesoService : IAccesoService
             if (solicitud == null || solicitud.Estado != "Pendiente")
                 return false;
 
-            // Validar que el gafete exista, esté libre y activo
             var gafete = await _db.Gafetes.FirstOrDefaultAsync(g =>
                 g.Id == request.GafeteId && g.Activo && g.Estado == "Libre");
 
             if (gafete == null)
                 throw new InvalidOperationException("El gafete seleccionado no está disponible.");
 
-            // Actualizar solicitud
             solicitud.Estado = "Aprobado";
-            solicitud.GuardiaId = request.GuardiaId;
+            solicitud.PerfilId = perfilId; // ── FIX: Usamos el PerfilId recibido
 
-            // Actualizar registro según tipo
             if (solicitud.TipoRegistro == "Visitante")
             {
                 var registro = await _db.RegistrosVisitantes.FindAsync(solicitud.RegistroId);
                 if (registro != null)
                 {
                     registro.EstadoAcceso = "Aprobado";
-                    registro.GuardiaEntradaId = request.GuardiaId;
-                    registro.GafeteId = request.GafeteId;        // <-- Asignar FK
+                    registro.PerfilEntradaId = perfilId; // ── FIX
+                    registro.GafeteId = request.GafeteId;
                 }
             }
             else if (solicitud.TipoRegistro == "Proveedor")
@@ -438,7 +439,7 @@ public class AccesoService : IAccesoService
                 if (registro != null)
                 {
                     registro.EstadoAcceso = "Aprobado";
-                    registro.GuardiaEntradaId = request.GuardiaId;
+                    registro.PerfilEntradaId = perfilId; // ── FIX
                     registro.GafeteId = request.GafeteId;
                 }
             }
@@ -450,12 +451,12 @@ public class AccesoService : IAccesoService
             await _db.SaveChangesAsync();
             await transaction.CommitAsync();
 
-            // Notificar por SignalR
-            var guardia = await _db.Guardias.FindAsync(request.GuardiaId);
+            var perfil = await _db.Perfiles.FindAsync(perfilId); // ── FIX: Buscamos en Perfiles
+
             await _hub.Clients.All.SendAsync("SolicitudResuelta", new SolicitudResueltaEvent(
                 SolicitudId: request.SolicitudId,
                 Estado: "Aprobado",
-                NombreGuardia: guardia?.Nombre ?? ""
+                NombreGuardia: perfil?.NombreCompleto ?? "" // ── FIX: Enviamos el NombreCompleto del perfil, manteniendo el nombre de la propiedad
             ));
 
             return true;
@@ -468,13 +469,13 @@ public class AccesoService : IAccesoService
         }
     }
 
-    public async Task<bool> RechazarSolicitudAsync(RechazarSolicitudRequest request)
+    public async Task<bool> RechazarSolicitudAsync(RechazarSolicitudRequest request, int perfilId) // ── FIX: parámetro perfilId
     {
         var solicitud = await _db.SolicitudesPendientes.FindAsync(request.SolicitudId);
         if (solicitud == null || solicitud.Estado != "Pendiente") return false;
 
         solicitud.Estado = "Rechazado";
-        solicitud.GuardiaId = request.GuardiaId;
+        solicitud.PerfilId = perfilId; // ── FIX
 
         if (solicitud.TipoRegistro == "Visitante")
         {
@@ -482,7 +483,7 @@ public class AccesoService : IAccesoService
             if (registro != null)
             {
                 registro.EstadoAcceso = "Rechazado";
-                registro.GuardiaEntradaId = request.GuardiaId;
+                registro.PerfilEntradaId = perfilId; // ── FIX
                 registro.Observaciones = string.IsNullOrEmpty(registro.Observaciones)
                     ? request.Motivo
                     : $"{registro.Observaciones} | Rechazo: {request.Motivo}";
@@ -494,7 +495,7 @@ public class AccesoService : IAccesoService
             if (registro != null)
             {
                 registro.EstadoAcceso = "Rechazado";
-                registro.GuardiaEntradaId = request.GuardiaId;
+                registro.PerfilEntradaId = perfilId; // ── FIX
                 registro.Observaciones = string.IsNullOrEmpty(registro.Observaciones)
                     ? request.Motivo
                     : $"{registro.Observaciones} | Rechazo: {request.Motivo}";
@@ -503,19 +504,18 @@ public class AccesoService : IAccesoService
 
         await _db.SaveChangesAsync();
 
-        var guardia = await _db.Guardias.FindAsync(request.GuardiaId);
+        var perfil = await _db.Perfiles.FindAsync(perfilId); // ── FIX: Buscamos en Perfiles
 
-        // ── FIX 2: mismo nombre "SolicitudResuelta" — la app escucha solo este evento
         await _hub.Clients.All.SendAsync("SolicitudResuelta", new SolicitudResueltaEvent(
             SolicitudId: request.SolicitudId,
             Estado: "Rechazado",
-            NombreGuardia: guardia?.Nombre ?? ""
+            NombreGuardia: perfil?.NombreCompleto ?? "" // ── FIX
         ));
 
         return true;
     }
 
-    public async Task<bool> MarcarSalidaAsync(MarcarSalidaRequest request)
+    public async Task<bool> MarcarSalidaAsync(MarcarSalidaRequest request, int perfilSalidaId) // ── FIX: parámetro perfilSalidaId
     {
         if (request.TipoRegistro == "Visitante")
         {
@@ -523,7 +523,7 @@ public class AccesoService : IAccesoService
             if (registro == null || registro.FechaSalida != null) return false;
 
             registro.FechaSalida = DateTime.UtcNow;
-            registro.GuardiaSalidaId = request.GuardiaId;
+            registro.PerfilSalidaId = perfilSalidaId; // ── FIX
         }
         else if (request.TipoRegistro == "Proveedor")
         {
@@ -531,7 +531,7 @@ public class AccesoService : IAccesoService
             if (registro == null || registro.FechaSalida != null) return false;
 
             registro.FechaSalida = DateTime.UtcNow;
-            registro.GuardiaSalidaId = request.GuardiaId;
+            registro.PerfilSalidaId = perfilSalidaId; // ── FIX
         }
         else
         {
@@ -543,11 +543,12 @@ public class AccesoService : IAccesoService
         return true;
     }
 
-    public async Task<bool> GuardarFcmTokenAsync(int guardiaId, string fcmToken)
+    public async Task<bool> GuardarFcmTokenAsync(int perfilId, string fcmToken) // ── FIX
     {
-        var guardia = await _db.Guardias.FindAsync(guardiaId);
-        if (guardia is null) return false;
-        guardia.FcmToken = fcmToken;
+        var perfil = await _db.Perfiles.FindAsync(perfilId);
+        if (perfil is null) return false;
+
+        perfil.FcmToken = fcmToken;
         await _db.SaveChangesAsync();
         return true;
     }
@@ -564,9 +565,11 @@ public class AccesoService : IAccesoService
     private async Task EnviarPushAGuardiasAsync(
         string titulo, string cuerpo, int solicitudId, string tipoRegistro)
     {
-        var tokens = await _db.Guardias
-            .Where(g => g.Activo && g.FcmToken != null)
-            .Select(g => g.FcmToken!)
+        // ── FIX: Buscar FCM Tokens en la tabla de Perfiles (Guardias, Supervisores, Admins)
+        var tokens = await _db.Perfiles
+            .Where(p => p.Activo && p.FcmToken != null &&
+                       (p.TipoPerfil == "Guardia" || p.TipoPerfil == "Administrador" || p.TipoPerfil == "Supervisor" || p.TipoPerfil == "Gerente"))
+            .Select(p => p.FcmToken!)
             .ToListAsync();
 
         foreach (var token in tokens)

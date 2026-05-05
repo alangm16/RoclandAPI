@@ -8,7 +8,11 @@ namespace RCD.SuperAdmin.Infrastructure.Data.Configurations
     {
         public void Configure(EntityTypeBuilder<Usuario> builder)
         {
-            builder.ToTable("TBL_ROCLAND_SUPERADMIN_USUARIOS");
+            builder.ToTable("TBL_ROCLAND_SUPERADMIN_USUARIOS", tb =>
+            {
+                tb.HasTrigger("TRG_SUPERADMIN_SYNC_NOMBRECOMPLETO_PERFIL");
+            });
+
             builder.HasKey(u => u.Id);
             builder.Property(u => u.NombreCompleto).HasMaxLength(150).IsRequired();
             builder.Property(u => u.Username).HasMaxLength(60).IsRequired();

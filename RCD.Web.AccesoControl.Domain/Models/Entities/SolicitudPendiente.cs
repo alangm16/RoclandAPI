@@ -8,9 +8,12 @@
         public int PersonaId { get; set; }
         public DateTime FechaSolicitud { get; set; } = DateTime.UtcNow;
         public string Estado { get; set; } = "Pendiente";
-        public int? GuardiaId { get; set; }
 
+        // FK actualizada a Perfil
+        public int? PerfilId { get; set; }
+
+        // Propiedades de navegación
         public Persona Persona { get; set; } = null!;
-        public Guardia? Guardia { get; set; }
+        public Perfil? Perfil { get; set; }
     }
 }

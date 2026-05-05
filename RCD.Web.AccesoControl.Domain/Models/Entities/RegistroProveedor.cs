@@ -6,26 +6,29 @@
         public int PersonaId { get; set; }
         public int MotivoId { get; set; }
         public DateTime FechaEntrada { get; set; }
+        public TimeSpan? HoraEntrada { get; private set; } // Campo calculado en BD
         public DateTime? FechaSalida { get; set; }
+        public TimeSpan? HoraSalida { get; private set; } // Campo calculado en BD
+        public int? MinutosEstancia { get; private set; } // Campo calculado en BD
         public string? UnidadPlacas { get; set; }
         public string? FacturaRemision { get; set; }
-        public int? GafeteId { get; set; }          // <-- Nuevo
-        public Gafete? Gafete { get; set; }
-        public int GuardiaEntradaId { get; set; }
-        public int? GuardiaSalidaId { get; set; }
+        public int? GafeteId { get; set; }
+
+        // FKs actualizadas a Perfil
+        public int PerfilEntradaId { get; set; }
+        public int? PerfilSalidaId { get; set; }
+
         public string EstadoAcceso { get; set; } = "Pendiente";
-        public bool ConsentimientoFirmado { get; set; } = false;
+        public bool? ConsentimientoFirmado { get; set; } = false;
         public string? Observaciones { get; set; }
         public string? IPSolicitud { get; set; }
-        public DateTime FechaCreacion { get; set; } = DateTime.UtcNow;
+        public DateTime? FechaCreacion { get; set; } = DateTime.Now;
 
-        public TimeOnly? HoraEntrada { get; set; }
-        public TimeOnly? HoraSalida { get; set; }
-        public int? MinutosEstancia { get; set; }
-
+        // Propiedades de navegación
         public Persona Persona { get; set; } = null!;
         public MotivoVisita Motivo { get; set; } = null!;
-        public Guardia GuardiaEntrada { get; set; } = null!;
-        public Guardia? GuardiaSalida { get; set; }
+        public Gafete? Gafete { get; set; }
+        public Perfil PerfilEntrada { get; set; } = null!;
+        public Perfil? PerfilSalida { get; set; }
     }
 }

@@ -30,11 +30,9 @@ public interface IAdminService
     Task<IEnumerable<MotivoDto>> GetMotivosAsync();
     Task<IEnumerable<TipoIdDto>> GetTiposIdAsync();
 
-    // Guardias
+    // ── Guardias (Operadores) ──
     Task<(IEnumerable<GuardiaListDto> Items, int Total)> ObtenerGuardiasAsync(string? busqueda, int pagina, int porPagina);
-    Task<bool> CrearGuardiaAsync(GuardiaCreateDto dto);
     Task<bool> ActualizarGuardiaAsync(int id, GuardiaUpdateDto dto);
-    Task<bool> ResetPasswordGuardiaAsync(int id, string nuevaPassword);
 
     // Exportar
     Task<byte[]> ExportarExcelHoyAsync();

@@ -1,12 +1,12 @@
-﻿using System.Net.Http.Headers;
+﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using RCD.Web.AccesoControl.Application.Interfaces;
+using RCD.Web.AccesoControl.Infrastructure.Persistence;
+using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
-using RCD.Web.AccesoControl.Application.Interfaces;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
-using RCD.Web.AccesoControl.Infrastructure.Persistence;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Logging;
 
 namespace RCD.Web.AccesoControl.Infrastructure.Services;
 
@@ -15,7 +15,7 @@ public class FcmService : IFcmService
     private readonly HttpClient _http;
     private readonly IConfiguration _config;
     private readonly ILogger<FcmService> _logger;
-    private readonly IServiceScopeFactory _scopeFactory; // <-- Agregado para la base de datos
+    private readonly IServiceScopeFactory _scopeFactory;
 
     private string FcmEndpoint =>
         $"https://fcm.googleapis.com/v1/projects/{_config["Firebase:ProjectId"]}/messages:send";
@@ -28,8 +28,7 @@ public class FcmService : IFcmService
         _scopeFactory = scopeFactory;
     }
 
-    public async Task EnviarAsync(string deviceToken, string titulo, string cuerpo,
-        Dictionary<string, string>? data = null)
+    public async Task EnviarAsync(string deviceToken, string titulo, string cuerpo, Dictionary<string, string>? data = null)
     {
         try
         {
@@ -76,7 +75,7 @@ public class FcmService : IFcmService
         }
     }
 
-    // Nuevo método para borrar el token de la DB
+    // ── FIX: Actualizado para limpiar la tabla de Perfiles
     private async Task LimpiarTokenMuertoAsync(string tokenInvalido)
     {
         try
@@ -84,12 +83,12 @@ public class FcmService : IFcmService
             using var scope = _scopeFactory.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<AccesoControlWebDbContext>();
 
-            var guardia = await db.Guardias.FirstOrDefaultAsync(g => g.FcmToken == tokenInvalido);
-            if (guardia != null)
+            var perfil = await db.Perfiles.FirstOrDefaultAsync(p => p.FcmToken == tokenInvalido);
+            if (perfil != null)
             {
-                guardia.FcmToken = null;
+                perfil.FcmToken = null;
                 await db.SaveChangesAsync();
-                _logger.LogInformation("Token obsoleto eliminado exitosamente para el guardia ID: {GuardiaId}", guardia.Id);
+                _logger.LogInformation("Token obsoleto eliminado exitosamente para el Perfil ID: {PerfilId}", perfil.Id);
             }
         }
         catch (Exception ex)

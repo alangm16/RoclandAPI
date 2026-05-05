@@ -1,128 +1,116 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using RCD.Web.AccesoControl.Domain.Models.Entities;
 
-namespace RCD.Web.AccesoControl.Infrastructure.Persistence;
-
-public class AccesoControlWebDbContext : DbContext
+namespace RCD.Web.AccesoControl.Infrastructure.Persistence
 {
-    public AccesoControlWebDbContext(DbContextOptions<AccesoControlWebDbContext> options) : base(options) { }
-
-    public DbSet<TipoIdentificacion> TiposIdentificacion => Set<TipoIdentificacion>();
-    public DbSet<Area> Areas => Set<Area>();
-    public DbSet<MotivoVisita> MotivosVisita => Set<MotivoVisita>();
-    public DbSet<Persona> Personas => Set<Persona>();
-    public DbSet<Guardia> Guardias => Set<Guardia>();
-    public DbSet<Gafete> Gafetes => Set<Gafete>();
-    public DbSet<RegistroVisitante> RegistrosVisitantes => Set<RegistroVisitante>();
-    public DbSet<RegistroProveedor> RegistrosProveedores => Set<RegistroProveedor>();
-    public DbSet<SolicitudPendiente> SolicitudesPendientes => Set<SolicitudPendiente>();
-    public DbSet<Administrador> Administradores => Set<Administrador>();
-
-    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    public class AccesoControlWebDbContext : DbContext
     {
-        base.OnModelCreating(modelBuilder);
+        public AccesoControlWebDbContext(DbContextOptions<AccesoControlWebDbContext> options) : base(options)
+        {
+        }
 
-        // ── Nombres de tablas ──────────────────────────────────────────
-        modelBuilder.Entity<TipoIdentificacion>()
-            .ToTable("TBL_ROCLAND_GUARD_TIPODEIDENTIFICACION");
-        modelBuilder.Entity<Area>()
-            .ToTable("TBL_ROCLAND_GUARD_AREAS");
-        modelBuilder.Entity<MotivoVisita>()
-            .ToTable("TBL_ROCLAND_GUARD_MOTIVOVISITA");
-        modelBuilder.Entity<Persona>()
-            .ToTable("TBL_ROCLAND_GUARD_PERSONAS");
-        modelBuilder.Entity<Guardia>()
-            .ToTable("TBL_ROCLAND_GUARD_GUARDIAS");
-        modelBuilder.Entity<RegistroVisitante>()
-            .ToTable(
-                "TBL_ROCLAND_GUARD_REGISTROVISITANTES",
-                tb => tb.UseSqlOutputClause(false)
-            );
+        // DbSets (Tablas)
+        public DbSet<TipoIdentificacion> TiposIdentificacion { get; set; } = null!;
+        public DbSet<Area> Areas { get; set; } = null!;
+        public DbSet<MotivoVisita> MotivosVisita { get; set; } = null!;
+        public DbSet<Gafete> Gafetes { get; set; } = null!;
+        public DbSet<Persona> Personas { get; set; } = null!;
+        public DbSet<Perfil> Perfiles { get; set; } = null!;
+        public DbSet<RegistroVisitante> RegistrosVisitantes { get; set; } = null!;
+        public DbSet<RegistroProveedor> RegistrosProveedores { get; set; } = null!;
+        public DbSet<SolicitudPendiente> SolicitudesPendientes { get; set; } = null!;
 
-        modelBuilder.Entity<RegistroProveedor>()
-            .ToTable(
-                "TBL_ROCLAND_GUARD_REGISTROPROVEEDORES",
-                tb => tb.UseSqlOutputClause(false)
-            );
-        modelBuilder.Entity<SolicitudPendiente>()
-            .ToTable("TBL_ROCLAND_GUARD_SOLICITUDESPENDIENTES");
-        modelBuilder.Entity<Administrador>()
-            .ToTable("TBL_ROCLAND_GUARD_ADMINISTRADORES");
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            base.OnModelCreating(modelBuilder);
 
-        // ── Índice único Persona ───────────────────────────────────────
-        modelBuilder.Entity<Persona>()
-            .HasIndex(p => new { p.TipoIdentificacionId, p.NumeroIdentificacion })
-            .IsUnique()
-            .HasDatabaseName("UQ_PERSONA");
+            // ============================================================
+            // MAPEO DE NOMBRES DE TABLAS
+            // ============================================================
+            modelBuilder.Entity<TipoIdentificacion>().ToTable("TBL_ROCLAND_ACCESOCONTROL_TIPODEIDENTIFICACION");
+            modelBuilder.Entity<Area>().ToTable("TBL_ROCLAND_ACCESOCONTROL_AREAS");
+            modelBuilder.Entity<MotivoVisita>().ToTable("TBL_ROCLAND_ACCESOCONTROL_MOTIVOVISITA");
+            modelBuilder.Entity<Gafete>().ToTable("TBL_ROCLAND_ACCESOCONTROL_GAFETES");
+            modelBuilder.Entity<Persona>().ToTable("TBL_ROCLAND_ACCESOCONTROL_PERSONAS");
+            modelBuilder.Entity<Perfil>().ToTable("TBL_ROCLAND_ACCESOCONTROL_PERFILES");
+            modelBuilder.Entity<RegistroVisitante>().ToTable("TBL_ROCLAND_ACCESOCONTROL_REGISTROVISITANTES");
+            modelBuilder.Entity<RegistroProveedor>().ToTable("TBL_ROCLAND_ACCESOCONTROL_REGISTROPROVEEDORES");
+            modelBuilder.Entity<SolicitudPendiente>().ToTable("TBL_ROCLAND_ACCESOCONTROL_SOLICITUDESPENDIENTES");
 
-        // ── Columnas calculadas (solo lectura, generadas en BD) ────────
-        modelBuilder.Entity<RegistroVisitante>()
-            .Property(r => r.HoraEntrada).ValueGeneratedOnAddOrUpdate();
-        modelBuilder.Entity<RegistroVisitante>()
-            .Property(r => r.HoraSalida).ValueGeneratedOnAddOrUpdate();
-        modelBuilder.Entity<RegistroVisitante>()
-            .Property(r => r.MinutosEstancia).ValueGeneratedOnAddOrUpdate();
+            // ============================================================
+            // CONFIGURACIONES ESPECÍFICAS
+            // ============================================================
 
-        modelBuilder.Entity<RegistroProveedor>()
-            .Property(r => r.HoraEntrada).ValueGeneratedOnAddOrUpdate();
-        modelBuilder.Entity<RegistroProveedor>()
-            .Property(r => r.HoraSalida).ValueGeneratedOnAddOrUpdate();
-        modelBuilder.Entity<RegistroProveedor>()
-            .Property(r => r.MinutosEstancia).ValueGeneratedOnAddOrUpdate();
+            // --- PERFIL ---
+            modelBuilder.Entity<Perfil>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.HasIndex(e => e.SuperAdminUsuarioId).IsUnique(); // Constraint UNIQUE
+            });
 
-        // ── Relaciones Guardia (dos FK a la misma tabla) ───────────────
-        modelBuilder.Entity<RegistroVisitante>()
-            .HasOne(r => r.GuardiaEntrada)
-            .WithMany(g => g.EntradasAutorizadas)
-            .HasForeignKey(r => r.GuardiaEntradaId)
-            .OnDelete(DeleteBehavior.Restrict);
+            // --- REGISTRO VISITANTES ---
+            modelBuilder.Entity<RegistroVisitante>(entity =>
+            {
+                entity.HasKey(e => e.Id);
 
-        modelBuilder.Entity<RegistroVisitante>()
-            .HasOne(r => r.GuardiaSalida)
-            .WithMany(g => g.SalidasAutorizadas)
-            .HasForeignKey(r => r.GuardiaSalidaId)
-            .OnDelete(DeleteBehavior.Restrict);
+                // Campos calculados (PERSISTED en la BD)
+                entity.Property(e => e.HoraEntrada).ValueGeneratedOnAddOrUpdate();
+                entity.Property(e => e.HoraSalida).ValueGeneratedOnAddOrUpdate();
+                entity.Property(e => e.MinutosEstancia).ValueGeneratedOnAddOrUpdate();
 
-        modelBuilder.Entity<RegistroProveedor>()
-            .HasOne(r => r.GuardiaEntrada)
-            .WithMany(g => g.EntradasProvAutorizadas)
-            .HasForeignKey(r => r.GuardiaEntradaId)
-            .OnDelete(DeleteBehavior.Restrict);
+                // Relación con Perfil (Entrada)
+                entity.HasOne(d => d.PerfilEntrada)
+                    .WithMany(p => p.RegistrosVisitantesEntrada)
+                    .HasForeignKey(d => d.PerfilEntradaId)
+                    .OnDelete(DeleteBehavior.Restrict); // Evitar ciclos de cascada
 
-        modelBuilder.Entity<RegistroProveedor>()
-            .HasOne(r => r.GuardiaSalida)
-            .WithMany(g => g.SalidasProvAutorizadas)
-            .HasForeignKey(r => r.GuardiaSalidaId)
-            .OnDelete(DeleteBehavior.Restrict);
+                // Relación con Perfil (Salida)
+                entity.HasOne(d => d.PerfilSalida)
+                    .WithMany(p => p.RegistrosVisitantesSalida)
+                    .HasForeignKey(d => d.PerfilSalidaId)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
 
-        // ── Gafetes ─────────────────────────────────────────────────
-        modelBuilder.Entity<Gafete>()
-            .ToTable("TBL_ROCLAND_GUARD_GAFETES");
+            // --- REGISTRO PROVEEDORES ---
+            modelBuilder.Entity<RegistroProveedor>(entity =>
+            {
+                entity.HasKey(e => e.Id);
 
-        modelBuilder.Entity<Gafete>()
-            .HasIndex(g => g.Codigo)
-            .IsUnique();
+                // Campos calculados (PERSISTED en la BD)
+                entity.Property(e => e.HoraEntrada).ValueGeneratedOnAddOrUpdate();
+                entity.Property(e => e.HoraSalida).ValueGeneratedOnAddOrUpdate();
+                entity.Property(e => e.MinutosEstancia).ValueGeneratedOnAddOrUpdate();
 
-        modelBuilder.Entity<Gafete>()
-            .HasIndex(g => g.Estado)
-            .HasFilter("[Activo] = 1");
+                // Relación con Perfil (Entrada)
+                entity.HasOne(d => d.PerfilEntrada)
+                    .WithMany(p => p.RegistrosProveedoresEntrada)
+                    .HasForeignKey(d => d.PerfilEntradaId)
+                    .OnDelete(DeleteBehavior.Restrict); // Evitar ciclos de cascada
 
-        modelBuilder.Entity<Gafete>()
-            .Property(g => g.Estado)
-            .HasDefaultValue("Libre");
+                // Relación con Perfil (Salida)
+                entity.HasOne(d => d.PerfilSalida)
+                    .WithMany(p => p.RegistrosProveedoresSalida)
+                    .HasForeignKey(d => d.PerfilSalidaId)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
 
-        // Relación con RegistroVisitante (GafeteId es nullable)
-        modelBuilder.Entity<RegistroVisitante>()
-            .HasOne(r => r.Gafete)
-            .WithMany(g => g.RegistrosVisitantes)
-            .HasForeignKey(r => r.GafeteId)
-            .OnDelete(DeleteBehavior.SetNull);
+            // --- SOLICITUDES PENDIENTES ---
+            modelBuilder.Entity<SolicitudPendiente>(entity =>
+            {
+                entity.HasKey(e => e.Id);
 
-        // Relación con RegistroProveedor
-        modelBuilder.Entity<RegistroProveedor>()
-            .HasOne(r => r.Gafete)
-            .WithMany(g => g.RegistrosProveedores)
-            .HasForeignKey(r => r.GafeteId)
-            .OnDelete(DeleteBehavior.SetNull);
+                // Relación con Perfil
+                entity.HasOne(d => d.Perfil)
+                    .WithMany() // No agregamos colección en Perfil para mantenerlo limpio
+                    .HasForeignKey(d => d.PerfilId)
+                    .OnDelete(DeleteBehavior.SetNull);
+            });
+
+            // --- PERSONA ---
+            modelBuilder.Entity<Persona>(entity =>
+            {
+                entity.HasIndex(e => new { e.TipoIdentificacionId, e.NumeroIdentificacion }).IsUnique();
+            });
+        }
     }
 }

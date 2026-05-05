@@ -6,12 +6,13 @@ using RCD.Web.AccesoControl.Application.Interfaces;
 namespace RCD.Web.AccesoControl.Web.Controllers;
 
 [ApiController]
-[Route("api/web/accesocontrol/[controller]")]             
-[ApiExplorerSettings(GroupName = "web-accesocontrol")]    
+[Route("api/web/accesocontrol/[controller]")]
+[ApiExplorerSettings(GroupName = "web-accesocontrol")]
 [Authorize(Policy = "AccesoControlWebPolicy")]
 public class AdminController : ControllerBase
 {
     private readonly IAdminService _admin;
+
     public AdminController(IAdminService admin) => _admin = admin;
 
     // ── KPIs ───────────────────────────────────────────────────────────
@@ -62,22 +63,21 @@ public class AdminController : ControllerBase
     public async Task<IActionResult> HistorialPersona(int id)
         => Ok(await _admin.ObtenerHistorialPersonaAsync(id));
 
-    // ── Guardias ───────────────────────────────────────────────────────
+    // ── Guardias (Ahora mapeados a Perfiles) ───────────────────────────
     [HttpGet("guardias")]
     public async Task<IActionResult> Guardias([FromQuery] string? busqueda, [FromQuery] int page = 1, [FromQuery] int pageSize = 10)
     {
         var (items, total) = await _admin.ObtenerGuardiasAsync(busqueda, page, pageSize);
         return Ok(new { Items = items, Total = total });
     }
-    [HttpPost("guardias")]
-    public async Task<IActionResult> CrearGuardia(GuardiaCreateDto dto)
-        => Ok(await _admin.CrearGuardiaAsync(dto));
+
+    // Mantenemos Actualizar para cambiar cosas como el Turno o el Número de Empleado
     [HttpPut("guardias/{id}")]
     public async Task<IActionResult> ActualizarGuardia(int id, GuardiaUpdateDto dto)
         => Ok(await _admin.ActualizarGuardiaAsync(id, dto));
-    [HttpPut("guardias/{id}/reset")]
-    public async Task<IActionResult> ResetPassword(int id, [FromBody] string nuevaPassword)
-        => Ok(await _admin.ResetPasswordGuardiaAsync(id, nuevaPassword));
+
+    // NOTA: Se eliminaron CrearGuardia y ResetPassword porque esas 
+    // acciones ahora le corresponden estrictamente al módulo SuperAdmin.
 
     // ── Catálogos ──────────────────────────────────────────────────────
     [HttpPost("areas")]
@@ -103,7 +103,7 @@ public class AdminController : ControllerBase
 
     [HttpGet("areas")]
     public async Task<IActionResult> GetAreas()
-    => Ok(await _admin.GetAreasAsync());
+        => Ok(await _admin.GetAreasAsync());
 
     [HttpGet("motivos")]
     public async Task<IActionResult> GetMotivos()

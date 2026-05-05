@@ -1,25 +1,38 @@
-﻿namespace RCD.Web.AccesoControl.Application.DTOs;
+﻿using System.ComponentModel.DataAnnotations;
 
-// ── KPIs Dashboard ─────────────────────────────────────────────────────
+namespace RCD.Web.AccesoControl.Application.DTOs;
+
+// ==========================================
+// ── KPIs & DASHBOARD ──
+// ==========================================
 public record DashboardKpiDto(
     int DentroAhora,
-    int TotalHoy,
-    int TotalVisitantesHoy,
-    int TotalProveedoresHoy,
-    double PromedioEstanciaMinutos,
+    int AccesosHoy,
+    int VisitantesHoy,
+    int ProveedoresHoy,
+    double TiempoPromedio,
     int SolicitudesPendientes
 );
 
-// ── Flujo por hora ─────────────────────────────────────────────────────
-public record FlujoPorHoraDto(int Hora, int Total);
+public record FlujoPorHoraDto(
+    int Hora,
+    int Total
+);
 
-// ── Flujo diario del mes ───────────────────────────────────────────────
-public record FlujoDiarioDto(string Fecha, int Visitantes, int Proveedores);
+public record FlujoDiarioDto(
+    string Fecha,
+    int Visitantes,
+    int Proveedores
+);
 
-// ── Área más visitada ──────────────────────────────────────────────────
-public record AreaVisitadaDto(string Area, int Total);
+public record AreaVisitadaDto(
+    string Area,
+    int Total
+);
 
-// ── Acceso en historial ────────────────────────────────────────────────
+// ==========================================
+// ── HISTORIAL ──
+// ==========================================
 public record HistorialAccesoDto(
     int Id,
     string Tipo,
@@ -32,15 +45,17 @@ public record HistorialAccesoDto(
     DateTime? FechaSalida,
     int? MinutosEstancia,
     string EstadoAcceso,
-    string? CodigoGafete,     // Cambiado de int? GafeteId a string? CodigoGafete
-    string Guardia
+    string? CodigoGafete,
+    string Guardia // Mantenemos el nombre de la propiedad, aunque ahora guarda el NombreCompleto del Perfil
 );
 
-// ── Perfil de persona ──────────────────────────────────────────────────
+// ==========================================
+// ── PERSONAS ──
+// ==========================================
 public record PersonaPerfilDto(
     int Id,
     string Nombre,
-    string TipoID,
+    string TipoIdentificacion,
     string NumeroIdentificacion,
     string? Empresa,
     string? Telefono,
@@ -50,19 +65,30 @@ public record PersonaPerfilDto(
     DateTime? FechaUltimaVisita
 );
 
-// ── CRUD catálogos ─────────────────────────────────────────────────────
-public record CatalogoCreateDto(string Nombre);
-public record CatalogoListDto(int Id, string Nombre, bool Activo);
+// ==========================================
+// ── CATÁLOGOS ──
+// ==========================================
+public record CatalogoCreateDto(
+    [Required(ErrorMessage = "El nombre es obligatorio")]
+    [StringLength(100, MinimumLength = 2, ErrorMessage = "Debe tener entre 2 y 100 caracteres")]
+    string Nombre
+);
+
 public record AreaDto(int Id, string Nombre, bool Activo);
 public record MotivoDto(int Id, string Nombre, bool Activo);
 public record TipoIdDto(int Id, string Nombre, bool Activo);
-public record GuardiaCreateDto(string Nombre, string Usuario, string Password);
-public record GuardiaUpdateDto(string Nombre, bool Activo);
-public record AdminCreateDto(string Nombre, string Usuario, string Password, string Rol);
+
+// ==========================================
+// ── GUARDIAS (Ahora Perfiles Operativos) ──
+// ==========================================
 public record GuardiaListDto(
     int Id,
     string Nombre,
-    string Usuario,
+    string Usuario, // Aquí ahora estamos enviando el Número de Empleado o el Tipo de Perfil
     bool Activo,
     DateTime FechaCreacion
+);
+
+public record GuardiaUpdateDto(
+    bool Activo
 );

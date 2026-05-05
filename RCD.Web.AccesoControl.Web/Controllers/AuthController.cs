@@ -1,42 +1,45 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using RCD.Web.AccesoControl.Application.DTOs;
 using RCD.Web.AccesoControl.Application.Interfaces;
+using System.Security.Claims;
 
 namespace RCD.Web.AccesoControl.Web.Controllers;
 
 [ApiController]
 [Route("api/web/accesocontrol/[controller]")]
 [ApiExplorerSettings(GroupName = "web-accesocontrol")]
+[Authorize] // ── FIX: Ahora requiere el token generado por SuperAdmin
 public class AuthController : ControllerBase
 {
     private readonly IAuthService _auth;
-    public AuthController(IAuthService auth) => _auth = auth;
 
-    [HttpPost("guardia/login")]
-    public async Task<IActionResult> LoginGuardia(LoginRequest request)
+    public AuthController(IAuthService auth)
     {
-        var result = await _auth.LoginGuardiaAsync(request);
-        return result is null ? Unauthorized("Credenciales inválidas") : Ok(result);
+        _auth = auth;
     }
 
-    [HttpPost("admin/login")]
-    public async Task<IActionResult> LoginAdmin(LoginRequest request)
+    /// <summary>
+    /// Este endpoint reemplaza a los antiguos LoginGuardia y LoginAdmin.
+    /// Valida si el usuario autenticado en SuperAdmin tiene un perfil en Acceso Control.
+    /// </summary>
+    [HttpGet("mi-perfil")]
+    public async Task<IActionResult> ObtenerMiPerfil()
     {
-        var result = await _auth.LoginAdminAsync(request);
-        return result is null ? Unauthorized("Credenciales inválidas") : Ok(result);
+        // 1. Extraer el ID del usuario de los Claims del Token JWT
+        var superAdminIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                              ?? User.FindFirst("id")?.Value;
+
+        if (!int.TryParse(superAdminIdStr, out int superAdminId))
+            return Unauthorized(new { mensaje = "El token no contiene un ID de usuario válido." });
+
+        // 2. Consultar el Perfil en la tabla unificada (Perfiles)
+        var perfil = await _auth.ObtenerPerfilPorSuperAdminIdAsync(superAdminId);
+
+        if (perfil == null || !perfil.Activo)
+            return StatusCode(403, new { mensaje = "No tienes un perfil configurado o activo en el módulo de Acceso Control." });
+
+        return Ok(perfil);
     }
 
-#if DEBUG
- 
-    /// Genera un hash BCrypt para insertar en la BD.
-    /// Remover en producción o proteger con autenticación.
-
-    [HttpGet("dev/hash")]
-    public IActionResult GenerarHash([FromQuery] string pwd)
-    {
-        if (string.IsNullOrWhiteSpace(pwd)) return BadRequest();
-        return Ok(new { hash = BCrypt.Net.BCrypt.HashPassword(pwd) });
-    }
-#endif
+    // Se eliminó GenerarHash porque la gestión de contraseñas ahora es responsabilidad de SuperAdmin.
 }

@@ -8,22 +8,22 @@ public class UsuarioConfiguration : IEntityTypeConfiguration<Usuario>
 {
     public void Configure(EntityTypeBuilder<Usuario> builder)
     {
-        builder.ToTable("TBL_ROCLAND_RELEVO_USUARIOS");
+        builder.ToTable("TBL_ROCLAND_RELEVO_USUARIOS"); 
+        builder.HasKey(x => x.SuperAdminUsuarioId);
 
-        // 1. Definimos la nueva llave primaria
-        builder.HasKey(u => u.SuperAdminUsuarioId);
-
-        // 2. Le decimos a EF Core que NO la autogenere (IDENTITY), porque el ID viene de SuperAdmin
-        builder.Property(u => u.SuperAdminUsuarioId)
+        builder.Property(x => x.SuperAdminUsuarioId)
+               .HasColumnName("SuperAdminUsuarioId") // Forzamos el nombre exacto del SQL
                .ValueGeneratedNever();
 
-        // 3. Mapeo del resto de propiedades
-        builder.Property(u => u.NumeroEmpleado).HasMaxLength(30).IsRequired();
-        builder.HasIndex(u => u.NumeroEmpleado).IsUnique();
+            builder.Property(x => x.NumeroEmpleado)
+                   .HasColumnName("NumeroEmpleado")
+                   .HasMaxLength(30);
 
-        builder.Property(u => u.RolLocal).HasMaxLength(20).IsRequired();
+            builder.Property(x => x.RolLocal)
+                   .HasColumnName("RolLocal")
+                   .HasMaxLength(20);
 
-        builder.Property(u => u.Activo).HasDefaultValue(true);
-        builder.Property(u => u.FechaCreacion).HasDefaultValueSql("GETDATE()");
+            builder.Property(x => x.Activo)
+                   .HasColumnName("Activo");   
     }
 }

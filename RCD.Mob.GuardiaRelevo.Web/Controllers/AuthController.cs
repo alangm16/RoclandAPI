@@ -7,7 +7,7 @@ namespace RCD.Mob.GuardiaRelevo.Web.Controllers;
 
 [ApiController]
 [Route("api/mob/guardiarelevo/[controller]")]
-[ApiExplorerSettings(GroupName = "mobile-guardiarelevo")]
+[ApiExplorerSettings(GroupName = "mobile-guardia-relevo")]
 [Authorize] // ── Exige el token generado por SuperAdmin
 public class AuthController : ControllerBase
 {

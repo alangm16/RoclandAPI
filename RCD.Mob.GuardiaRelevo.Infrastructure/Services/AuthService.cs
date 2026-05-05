@@ -20,8 +20,9 @@ public class AuthService : IAuthService
     {
         // Busca en TBL_ROCLAND_RELEVO_USUARIOS el perfil vinculado al SuperAdmin
         return await _db.Usuarios
-            .AsNoTracking()
-            .FirstOrDefaultAsync(u => u.SuperAdminUsuarioId == superAdminId);
+        .FromSqlRaw("SELECT SuperAdminUsuarioId, NumeroEmpleado, RolLocal, Activo, FechaCreacion FROM TBL_ROCLAND_RELEVO_USUARIOS WHERE SuperAdminUsuarioId = {0}", superAdminId)
+        .AsNoTracking()
+        .FirstOrDefaultAsync();
     }
 
     public async Task<int?> ObtenerSuperAdminIdPorQRAsync(string qrCode)

@@ -11,7 +11,7 @@ public class Usuario
 
     public bool Activo { get; set; }
 
-    public DateTime FechaCreacion { get; set; }
+    //public DateTime FechaCreacion { get; set; 
 
     // (Opcional) Propiedades de navegación si EF Core las necesita para los Rondines e Incidencias
     // public ICollection<Rondin> Rondines { get; set; } = new List<Rondin>();

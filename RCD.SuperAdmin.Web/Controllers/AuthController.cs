@@ -1,7 +1,8 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using RCD.SuperAdmin.Application.Interfaces;
 using RCD.SuperAdmin.Application.DTOs.Auth;
+using RCD.SuperAdmin.Application.Interfaces;
+using RCD.SuperAdmin.Infrastructure.Services;
 
 namespace RCD.SuperAdmin.Web.Controllers;
 
@@ -36,5 +37,25 @@ public class AuthController(IAuthService authService) : ControllerBase
     {
         await authService.RevocarRefreshTokenAsync(request.RefreshToken);
         return NoContent();
+    }
+
+    [HttpPost("qr-login")]
+    [AllowAnonymous]
+    public async Task<ActionResult<ApiResponse<LoginResponse>>> QrLogin(
+    [FromBody] QrLoginRequest request,
+    CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(request.QrCode))
+            return BadRequest(ApiResponse<LoginResponse>.Fail("El código QR es requerido."));
+
+        try
+        {
+            var response = await _authService.LoginConQrAsync(request.QrCode, ct);
+            return Ok(ApiResponse<LoginResponse>.Ok(response, "Login exitoso."));
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return Unauthorized(ApiResponse<LoginResponse>.Fail(ex.Message));
+        }
     }
 }

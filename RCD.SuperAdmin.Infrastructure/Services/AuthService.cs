@@ -1,5 +1,7 @@
 ﻿// AuthService.cs
+using DocumentFormat.OpenXml.InkML;
 using Microsoft.EntityFrameworkCore;
+using RCD.Shared.Infrastructure.Security;
 using RCD.SuperAdmin.Application.DTOs.Auth;
 using RCD.SuperAdmin.Application.Interfaces;
 using RCD.SuperAdmin.Domain.Entities;
@@ -146,5 +148,33 @@ public class AuthService(
             Detalle = detalle
         });
         await db.SaveChangesAsync();
+    }
+
+    public async Task<LoginResponse> LoginConQrAsync(string qrCode, CancellationToken ct = default)
+    {
+        // 1. Buscamos al usuario por su QR en lugar de su Username
+        var usuario = await _context.Usuarios
+            // IMPORTANTE: Asegúrate de incluir los roles y proyectos como lo haces en tu Login normal
+            // .Include(u => u.UsuarioRoles)... 
+            .FirstOrDefaultAsync(u => u.QRCode == qrCode && u.Activo, ct);
+
+        if (usuario == null)
+        {
+            throw new UnauthorizedAccessException("Código QR no válido o usuario inactivo.");
+        }
+
+        // 2. Generamos los tokens igual que en tu Login tradicional
+        var accessToken = _jwtTokenService.GenerateAccessToken(usuario); // Ajusta al nombre real de tu método
+        var refreshToken = _jwtTokenService.GenerateRefreshToken();
+
+        // 3. Guardamos el Refresh Token
+        usuario.RefreshTokens.Add(refreshToken);
+        await _context.SaveChangesAsync(ct);
+
+        return new LoginResponse
+        {
+            AccessToken = accessToken,
+            RefreshToken = refreshToken.Token
+        };
     }
 }

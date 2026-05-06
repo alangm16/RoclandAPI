@@ -19,6 +19,7 @@
 	<ItemGroup>
 		<ProjectReference Include="..\RCD.Web.AccesoControl.Module\RCD.Web.AccesoControl.Module.csproj" ReferenceOutputAssembly="false" />
 		<ProjectReference Include="..\RCD.Mob.AccesoControl.Module\RCD.Mob.AccesoControl.Module.csproj" ReferenceOutputAssembly="false" />
+		<ProjectReference Include="..\RCD.SuperAdmin.Module\RCD.SuperAdmin.Module.csproj" ReferenceOutputAssembly="false" />
 	</ItemGroup>
 
 </Project>

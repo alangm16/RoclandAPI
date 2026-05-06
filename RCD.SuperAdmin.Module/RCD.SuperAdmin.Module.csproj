@@ -6,6 +6,18 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+	<ItemGroup>
+		<Content Update="appsettings.Development.json">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+			<CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+		</Content>
+
+		<Content Update="appsettings.Secrets.json">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+			<CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+		</Content>
+	</ItemGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\RCD.SuperAdmin.Application\RCD.SuperAdmin.Application.csproj" />
     <ProjectReference Include="..\RCD.SuperAdmin.Infrastructure\RCD.SuperAdmin.Infrastructure.csproj" />

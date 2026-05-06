@@ -208,4 +208,24 @@ public class AuthService(
             usuario.NombreCompleto, usuario.Username,
             roles, proyectos);
     }
+
+    public async Task<IEnumerable<ProyectoPermitidoDto>> DescubrirProyectosAsync(string identificador, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(identificador))
+            return Enumerable.Empty<ProyectoPermitidoDto>();
+
+        // 1. Buscamos al usuario por Username o Email (solo usuarios activos)
+        var usuario = await db.Usuarios
+            .AsNoTracking()
+            .FirstOrDefaultAsync(u =>
+                (u.Username == identificador || u.Email == identificador) && u.Activo, ct);
+
+        // 2. Por seguridad, si no existe o está inactivo, devolvemos una lista vacía 
+        // (así no damos pistas a atacantes sobre qué usuarios existen y cuáles no)
+        if (usuario is null)
+            return Enumerable.Empty<ProyectoPermitidoDto>();
+
+        // 3. Reutilizamos tu excelente servicio de permisos para obtener la lista final
+        return await permisosService.ResolverPermisosEfectivosAsync(usuario.Id);
+    }
 }

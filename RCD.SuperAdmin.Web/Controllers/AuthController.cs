@@ -54,4 +54,16 @@ public class AuthController(IAuthService authService) : ControllerBase
             ? Unauthorized(new { mensaje = "Código QR inválido, usuario inactivo o cuenta bloqueada." })
             : Ok(result);
     }
+
+    [HttpGet("descubrir-proyectos")]
+    [AllowAnonymous] 
+    public async Task<IActionResult> DescubrirProyectos([FromQuery] string identificador, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(identificador))
+            return BadRequest(new { mensaje = "El identificador (usuario o correo) es requerido." });
+
+        var proyectos = await authService.DescubrirProyectosAsync(identificador, ct);
+
+        return Ok(proyectos);
+    }
 }

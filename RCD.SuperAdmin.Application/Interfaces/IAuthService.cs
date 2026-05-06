@@ -8,4 +8,5 @@ public interface IAuthService
     Task<RefreshTokenResponse?> RefreshAsync(string refreshToken, string? ipAddress);
     Task RevocarRefreshTokenAsync(string refreshToken);
     Task<LoginResponse?> LoginConQrAsync(string qrCode, string? ipAddress = null, string? plataforma = null, CancellationToken ct = default);
+    Task<IEnumerable<ProyectoPermitidoDto>> DescubrirProyectosAsync(string identificador, CancellationToken ct = default);
 }

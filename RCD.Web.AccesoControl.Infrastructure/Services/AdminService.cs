@@ -420,7 +420,8 @@ public class AdminService : IAdminService
             .Select(g => new GuardiaListDto(
                 g.Id,
                 g.NombreCompleto,
-                g.NumeroEmpleado ?? g.TipoPerfil,
+                g.NumeroEmpleado ?? "N/A",
+                g.TipoPerfil,
                 g.Activo,
                 g.FechaCreacion
             ))

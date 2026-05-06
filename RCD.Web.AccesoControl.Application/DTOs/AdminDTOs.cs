@@ -84,7 +84,8 @@ public record TipoIdDto(int Id, string Nombre, bool Activo);
 public record GuardiaListDto(
     int Id,
     string Nombre,
-    string Usuario, // Aquí ahora estamos enviando el Número de Empleado o el Tipo de Perfil
+    string Usuario,
+    string Rol,
     bool Activo,
     DateTime FechaCreacion
 );

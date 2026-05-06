@@ -283,22 +283,32 @@ public class AdminService : IAdminService
 
         var total = await query.CountAsync();
 
-        var items = await query
+        // 1. Traemos los datos de la BD en formato anónimo (UTC)
+        var itemsDb = await query
             .OrderByDescending(p => p.TotalVisitas)
             .Skip((pagina - 1) * porPagina)
             .Take(porPagina)
-            .Select(p => new PersonaPerfilDto(
+            .Select(p => new {
                 p.Id,
                 p.Nombre,
-                p.TipoIdentificacion.Nombre,
+                TipoId = p.TipoIdentificacion.Nombre,
                 p.NumeroIdentificacion,
                 p.Empresa,
                 p.Telefono,
                 p.Email,
                 p.TotalVisitas,
                 p.FechaRegistro,
-                p.FechaUltimaVisita))
+                p.FechaUltimaVisita
+            })
             .ToListAsync();
+
+        // 2. Mapeamos al DTO aplicando la conversión de horas
+        var items = itemsDb.Select(p => new PersonaPerfilDto(
+            p.Id, p.Nombre, p.TipoId, p.NumeroIdentificacion, p.Empresa, p.Telefono, p.Email,
+            p.TotalVisitas,
+            p.FechaRegistro.Add(_offsetMexico),
+            p.FechaUltimaVisita.HasValue ? p.FechaUltimaVisita.Value.Add(_offsetMexico) : null
+        )).ToList();
 
         return (items, total);
     }
@@ -311,6 +321,7 @@ public class AdminService : IAdminService
 
         if (p is null) return null;
 
+        // Aplicamos el _offsetMexico a las fechas
         return new PersonaPerfilDto(
             p.Id,
             p.Nombre,
@@ -320,57 +331,68 @@ public class AdminService : IAdminService
             p.Telefono,
             p.Email,
             p.TotalVisitas,
-            p.FechaRegistro,
-            p.FechaUltimaVisita);
+            p.FechaRegistro.Add(_offsetMexico),
+            p.FechaUltimaVisita.HasValue ? p.FechaUltimaVisita.Value.Add(_offsetMexico) : null);
     }
 
     public async Task<IEnumerable<HistorialAccesoDto>> ObtenerHistorialPersonaAsync(int personaId)
     {
-        var visitas = await _db.RegistrosVisitantes
-            .Include(r => r.Area)
-            .Include(r => r.Motivo)
-            .Include(r => r.PerfilEntrada) // ── FIX
-            .Include(r => r.Gafete)
+        // 1. Consultar Visitantes 
+        var visitasDb = await _db.RegistrosVisitantes
             .Where(r => r.PersonaId == personaId)
-            .Select(r => new HistorialAccesoDto(
+            .Select(r => new {
                 r.Id,
-                "Visitante",
                 r.Persona.Nombre,
-                null,
                 r.Persona.NumeroIdentificacion,
-                r.Area.Nombre,
-                r.Motivo.Nombre,
+                Area = r.Area.Nombre,
+                Motivo = r.Motivo.Nombre,
                 r.FechaEntrada,
                 r.FechaSalida,
                 r.MinutosEstancia,
                 r.EstadoAcceso,
-                r.Gafete != null ? r.Gafete.Codigo : null,
-                r.PerfilEntrada != null ? r.PerfilEntrada.NombreCompleto : "Desconocido"))
+                CodigoGafete = r.Gafete != null ? r.Gafete.Codigo : null,
+                Guardia = r.PerfilEntrada != null ? r.PerfilEntrada.NombreCompleto : "Desconocido"
+            })
             .ToListAsync();
 
-        var proveedores = await _db.RegistrosProveedores
-            .Include(r => r.Motivo)
-            .Include(r => r.PerfilEntrada) // ── FIX
-            .Include(r => r.Gafete)
+        // Convertimos fechas de visitantes (Aplicando el Offset)
+        var visitas = visitasDb.Select(r => new HistorialAccesoDto(
+            r.Id, "Visitante", r.Nombre, null, r.NumeroIdentificacion,
+            r.Area, r.Motivo,
+            r.FechaEntrada.Add(_offsetMexico),
+            r.FechaSalida.HasValue ? r.FechaSalida.Value.Add(_offsetMexico) : null,
+            r.MinutosEstancia, r.EstadoAcceso, r.CodigoGafete, r.Guardia
+        ));
+
+        // 2. Consultar Proveedores
+        var proveedoresDb = await _db.RegistrosProveedores
             .Where(r => r.PersonaId == personaId)
-            .Select(r => new HistorialAccesoDto(
+            .Select(r => new {
                 r.Id,
-                "Proveedor",
                 r.Persona.Nombre,
                 r.Persona.Empresa,
                 r.Persona.NumeroIdentificacion,
-                null,
-                r.Motivo.Nombre,
+                Motivo = r.Motivo.Nombre,
                 r.FechaEntrada,
                 r.FechaSalida,
                 r.MinutosEstancia,
                 r.EstadoAcceso,
-                r.Gafete != null ? r.Gafete.Codigo : null,
-                r.PerfilEntrada != null ? r.PerfilEntrada.NombreCompleto : "Desconocido"))
+                CodigoGafete = r.Gafete != null ? r.Gafete.Codigo : null,
+                Guardia = r.PerfilEntrada != null ? r.PerfilEntrada.NombreCompleto : "Desconocido"
+            })
             .ToListAsync();
 
-        return visitas.Concat(proveedores)
-                      .OrderByDescending(r => r.FechaEntrada);
+        // Convertimos fechas de proveedores (Aplicando el Offset)
+        var proveedores = proveedoresDb.Select(r => new HistorialAccesoDto(
+            r.Id, "Proveedor", r.Nombre, r.Empresa, r.NumeroIdentificacion,
+            null, r.Motivo,
+            r.FechaEntrada.Add(_offsetMexico),
+            r.FechaSalida.HasValue ? r.FechaSalida.Value.Add(_offsetMexico) : null,
+            r.MinutosEstancia, r.EstadoAcceso, r.CodigoGafete, r.Guardia
+        ));
+
+        // 3. Unir y ordenar
+        return visitas.Concat(proveedores).OrderByDescending(r => r.FechaEntrada);
     }
 
     // ── Guardias (Refactorizado a Perfiles) ────────────────────────────

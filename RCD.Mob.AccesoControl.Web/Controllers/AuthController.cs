@@ -9,7 +9,7 @@ namespace RCD.Mob.AccesoControl.Web.Controllers;
 [ApiController]
 [Route("api/mob/accesocontrol/[controller]")]
 [ApiExplorerSettings(GroupName = "mobile-accesocontrol")]
-[Authorize] // ── FIX: Exige el token generado por SuperAdmin
+[Authorize(Policy = "AccesoControlMobilePolicy")] // ── FIX: Exige el token generado por SuperAdmin
 public class AuthController : ControllerBase
 {
     private readonly IAuthService _auth;

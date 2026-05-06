@@ -12,4 +12,5 @@ services:
     volumes:
       - C:\RoclandConfig\AccesoControlWeb:C:\app\Modules\AccesoControlWeb:ro
       - C:\RoclandConfig\AccesoControlMobile:C:\app\Modules\AccesoControlMobileConfig:ro
+      - C:\RoclandConfig\SuperAdmin:C:\app\Modules\SuperAdmin:ro
     entrypoint: ["dotnet", "Rocland.Api.dll"]

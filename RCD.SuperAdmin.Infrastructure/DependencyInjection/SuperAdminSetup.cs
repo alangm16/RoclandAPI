@@ -17,6 +17,8 @@ public static class SuperAdminSetup
             options.UseSqlServer(configuration.GetConnectionString("SuperAdminConnection")),
             poolSize: 128);
 
+        var moduleConfig = configuration.GetSection("Modules:SuperAdmin");
+
         services.AddScoped<ITokenService, TokenService>();
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IPermisosService, PermisosService>();

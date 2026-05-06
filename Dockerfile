@@ -8,6 +8,7 @@ COPY ["Rocland.Api/Rocland.Api.csproj", "Rocland.Api/"]
 COPY ["RCD.Shared.Kernel/RCD.Shared.Kernel.csproj", "RCD.Shared.Kernel/"]
 COPY ["RCD.Web.AccesoControl.Module/RCD.Web.AccesoControl.Module.csproj", "RCD.Web.AccesoControl.Module/"]
 COPY ["RCD.Mob.AccesoControl.Module/RCD.Mob.AccesoControl.Module.csproj", "RCD.Mob.AccesoControl.Module/"]
+COPY ["RCD.SuperAdmin.Module/RCD.SuperAdmin.Module.csproj", "RCD.SuperAdmin.Module/"]
 # ... (añadir aquí otros proyectos de infraestructura/aplicación que sean dependencias)
 
 RUN dotnet restore "Rocland.Api/Rocland.Api.csproj"
@@ -28,6 +29,9 @@ RUN dotnet publish "RCD.Web.AccesoControl.Module.csproj" -c Release -o /app/publ
 # C. Publicar Módulo Mobile
 WORKDIR "/src/RCD.Mob.AccesoControl.Module"
 RUN dotnet publish "RCD.Mob.AccesoControl.Module.csproj" -c Release -o /app/publish/Modules/AccesoControlMobile /p:UseAppHost=false
+
+WORKDIR "/src/RCD.SuperAdmin.Module"
+RUN dotnet publish "RCD.SuperAdmin.Module.csproj" -c Release -o /app/publish/Modules/SuperAdmin /p:UseAppHost=false
 
 # 2. Etapa final: Runtime
 FROM mcr.microsoft.com/dotnet/aspnet:10.0-nanoserver-ltsc2022 AS final

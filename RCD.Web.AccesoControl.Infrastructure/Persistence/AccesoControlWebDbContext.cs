@@ -92,18 +92,37 @@ namespace RCD.Web.AccesoControl.Infrastructure.Persistence
             // --- REGISTRO PROVEEDORES ---
             modelBuilder.Entity<RegistroProveedor>(entity =>
             {
+                entity.ToTable("TBL_ROCLAND_ACCESOCONTROL_REGISTROPROVEEDORES", tb =>
+                {
+                    tb.HasTrigger("TRG_AC_REGISTROPROVEEDORES_ASIGNAR_GAFETE");
+                    tb.HasTrigger("TRG_AC_REGISTROPROVEEDORES_LIBERAR_GAFETE");
+                });
+
                 entity.HasKey(e => e.Id);
 
-                // Campos calculados (PERSISTED en la BD)
-                entity.Property(e => e.HoraEntrada).ValueGeneratedOnAddOrUpdate();
-                entity.Property(e => e.HoraSalida).ValueGeneratedOnAddOrUpdate();
-                entity.Property(e => e.MinutosEstancia).ValueGeneratedOnAddOrUpdate();
+                var horaEntrada = entity.Property(e => e.HoraEntrada)
+                    .ValueGeneratedOnAddOrUpdate()
+                    .Metadata;
+                horaEntrada.SetBeforeSaveBehavior(PropertySaveBehavior.Ignore);
+                horaEntrada.SetAfterSaveBehavior(PropertySaveBehavior.Ignore);
+
+                var horaSalida = entity.Property(e => e.HoraSalida)
+                    .ValueGeneratedOnAddOrUpdate()
+                    .Metadata;
+                horaSalida.SetBeforeSaveBehavior(PropertySaveBehavior.Ignore);
+                horaSalida.SetAfterSaveBehavior(PropertySaveBehavior.Ignore);
+
+                var minutos = entity.Property(e => e.MinutosEstancia)
+                    .ValueGeneratedOnAddOrUpdate()
+                    .Metadata;
+                minutos.SetBeforeSaveBehavior(PropertySaveBehavior.Ignore);
+                minutos.SetAfterSaveBehavior(PropertySaveBehavior.Ignore);
 
                 // Relación con Perfil (Entrada)
                 entity.HasOne(d => d.PerfilEntrada)
                     .WithMany(p => p.RegistrosProveedoresEntrada)
                     .HasForeignKey(d => d.PerfilEntradaId)
-                    .OnDelete(DeleteBehavior.Restrict); // Evitar ciclos de cascada
+                    .OnDelete(DeleteBehavior.Restrict);
 
                 // Relación con Perfil (Salida)
                 entity.HasOne(d => d.PerfilSalida)

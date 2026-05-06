@@ -22,6 +22,7 @@ Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Information()
     .MinimumLevel.Override("Microsoft.AspNetCore", LogEventLevel.Warning)
     .MinimumLevel.Override("Microsoft.EntityFrameworkCore", LogEventLevel.Warning)
+    .MinimumLevel.Override("RCD", LogEventLevel.Information)
     .Enrich.FromLogContext()
     .WriteTo.Console(outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}")
     .WriteTo.File(
@@ -388,16 +389,16 @@ app.UseRouting();
 app.UseCors("AngularPanelPolicy");  
 
 app.UseAuthentication();
-app.UseAuthorization();     
+app.UseAuthorization();
+
+app.UseSerilogRequestLogging(options =>
+    options.MessageTemplate = "HTTP {RequestMethod} {RequestPath} → {StatusCode} en {Elapsed:0}ms");
 
 // Cada módulo registra sus propios endpoints, hubs de SignalR y Razor Pages
 foreach (var module in modules)
 {
     module.ConfigureApplication(app);
 }
-
-app.UseSerilogRequestLogging(options =>
-    options.MessageTemplate = "HTTP {RequestMethod} {RequestPath} → {StatusCode} en {Elapsed:0}ms");
 
 app.MapControllers();
 

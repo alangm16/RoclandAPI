@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 using RCD.Web.AccesoControl.Application.DTOs;
 using RCD.Web.AccesoControl.Application.Interfaces;
 using System.Security.Claims;
@@ -13,8 +14,13 @@ namespace RCD.Mob.AccesoControl.Web.Controllers;
 public class AuthController : ControllerBase
 {
     private readonly IAuthService _auth;
+    private readonly ILogger<AuthController> _logger;
 
-    public AuthController(IAuthService auth) => _auth = auth;
+    public AuthController(IAuthService auth, ILogger<AuthController> logger)
+    {
+        _auth = auth;
+        _logger = logger;
+    }
 
     /// <summary>
     /// Reemplaza al antiguo LoginGuardia.

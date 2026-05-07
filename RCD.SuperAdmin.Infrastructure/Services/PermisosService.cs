@@ -82,7 +82,7 @@ public class PermisosService(SuperAdminDbContext db) : IPermisosService
                 if (permisoVista is null) continue;
 
                 vistas.Add(new VistaPermitidaDto(
-                    v.Id, v.Codigo, v.Nombre, v.Icono,
+                    v.Id, v.Codigo, v.Nombre, v.Ruta, v.Icono,
                     permisoVista.PuedeLeer, permisoVista.PuedeCrear,
                     permisoVista.PuedeEditar, permisoVista.PuedeBorrar));
             }

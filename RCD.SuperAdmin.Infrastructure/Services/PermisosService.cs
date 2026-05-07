@@ -77,9 +77,9 @@ public class PermisosService(SuperAdminDbContext db) : IPermisosService
                     ? MapearDesdeUsuario(puVista)
                     : prVista is not null
                         ? MapearDesdeRol(prVista)
-                        : null;
+                        : permisoPr;
 
-                if (permisoVista is null) continue;
+                if (permisoVista is null || !permisoVista.PuedeLeer) continue;
 
                 vistas.Add(new VistaPermitidaDto(
                     v.Id, v.Codigo, v.Nombre, v.Ruta, v.Icono,

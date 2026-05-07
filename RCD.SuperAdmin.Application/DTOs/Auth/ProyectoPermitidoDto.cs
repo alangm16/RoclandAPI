@@ -5,6 +5,7 @@ public record VistaPermitidaDto(
     int Id,
     string Codigo,
     string Nombre,
+    string Ruta, 
     string? Icono,
     bool PuedeLeer,
     bool PuedeCrear,

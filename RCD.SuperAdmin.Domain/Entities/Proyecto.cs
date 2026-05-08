@@ -7,10 +7,12 @@ namespace RCD.SuperAdmin.Domain.Entities
         public string Codigo { get; set; } = string.Empty;
         public string Nombre { get; set; } = string.Empty;
         public string Plataforma { get; set; } = string.Empty;
-        public string? IconoCss { get; set; }
+        public string? IconoCss { get; set; } = "bi-box";
         public string? UrlBase { get; set; }
         public bool Activo { get; set; } = true;
         public int Orden { get; set; }
+        public string? Version { get; set; } = "1.0.0";
+        public string? Estado { get; set; } = "Produccion";
 
         public ICollection<Vista> Vistas { get; set; } = [];
         public ICollection<PermisoRol> PermisosRol { get; set; } = [];

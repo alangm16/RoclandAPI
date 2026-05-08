@@ -1,4 +1,5 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using DocumentFormat.OpenXml.Bibliography;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using RCD.SuperAdmin.Domain.Entities;
 
@@ -15,6 +16,9 @@ namespace RCD.SuperAdmin.Infrastructure.Data.Configurations
             builder.Property(p => p.Nombre).HasMaxLength(150).IsRequired();
             builder.Property(p => p.Plataforma).HasMaxLength(30).IsRequired();
             builder.Property(p => p.UrlBase).HasMaxLength(200);
+            builder.Property(p => p.IconoCss).HasMaxLength(50);
+            builder.Property(p => p.Version).HasMaxLength(20).IsRequired();
+            builder.Property(p => p.Estado).HasMaxLength(20).IsRequired();
         }
     }
 }

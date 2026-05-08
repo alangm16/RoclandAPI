@@ -25,6 +25,7 @@ public static class SuperAdminSetup
         services.AddScoped<IUsuarioService, UsuarioService>();
         services.AddScoped<IRolService, RolService>();
         services.AddScoped<IProyectoService, ProyectoService>();
+        services.AddScoped<IDashboardService, DashboardService>();
 
         return services;
     }

@@ -14,6 +14,7 @@ namespace RCD.SuperAdmin.Infrastructure.Data
         public DbSet<PermisoUsuario> PermisosUsuario => Set<PermisoUsuario>();
         public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
         public DbSet<LogAcceso> LogsAcceso => Set<LogAcceso>();
+        public DbSet<Alerta> Alertas => Set<Alerta>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder) =>
             modelBuilder.ApplyConfigurationsFromAssembly(typeof(SuperAdminDbContext).Assembly);

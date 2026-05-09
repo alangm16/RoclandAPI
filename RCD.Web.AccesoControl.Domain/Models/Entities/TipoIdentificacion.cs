@@ -1,11 +1,11 @@
-﻿namespace RCD.Web.AccesoControl.Domain.Models.Entities
-{
-    public class TipoIdentificacion
-    {
-        public int Id { get; set; }
-        public string Nombre { get; set; } = string.Empty;
-        public bool Activo { get; set; } = true;
+﻿using RCD.Web.AccesoControl.Domain.Models.Entities;
 
-        public ICollection<Persona> Personas { get; set; } = [];
-    }
+namespace RCD.Web.AccesoControl.Domain.Models.Entities;
+
+public class TipoIdentificacion
+{
+    public int Id { get; set; }
+    public string Nombre { get; set; } = null!;
+    public bool Activo { get; set; } = true;
+    public ICollection<Persona> Personas { get; set; } = [];
 }

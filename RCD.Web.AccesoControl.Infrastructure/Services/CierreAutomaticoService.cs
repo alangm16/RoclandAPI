@@ -1,15 +1,11 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using RCD.Web.AccesoControl.Infrastructure.Persistence;
+using RCD.Web.AccesoControl.Infrastructure.Data;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace RCD.Web.AccesoControl.Infrastructure.Services;
-
-/// Background service que corre cada hora y cierra automáticamente
-/// los accesos que llevan más de X horas sin registrar salida.
-/// El umbral se configura en appsettings: AppSettings:AutoCerrarSalidaHoras
 
 public class CierreAutomaticoService : BackgroundService
 {
@@ -65,7 +61,7 @@ public class CierreAutomaticoService : BackgroundService
         foreach (var v in visitantes)
         {
             v.FechaSalida = v.FechaEntrada.AddHours(horas);
-            v.EstadoAcceso = "Salido";
+            v.EstadoAcceso = "Finalizado";
             v.Observaciones = (v.Observaciones ?? "") +
                 $" [Salida automática por sistema a las {DateTime.UtcNow:HH:mm} UTC]";
         }
@@ -80,7 +76,7 @@ public class CierreAutomaticoService : BackgroundService
         foreach (var p in proveedores)
         {
             p.FechaSalida = p.FechaEntrada.AddHours(horas);
-            p.EstadoAcceso = "Salido";
+            p.EstadoAcceso = "Finalizado";
             p.Observaciones = (p.Observaciones ?? "") +
                 $" [Salida automática por sistema a las {DateTime.UtcNow:HH:mm} UTC]";
         }
@@ -93,7 +89,7 @@ public class CierreAutomaticoService : BackgroundService
             .ToListAsync();
 
         foreach (var s in solicitudesViejas)
-            s.Estado = "Expirado";
+            s.Estado = "Rechazado";
 
         var totalCerrados = visitantes.Count + proveedores.Count;
         var totalSolicitudes = solicitudesViejas.Count;

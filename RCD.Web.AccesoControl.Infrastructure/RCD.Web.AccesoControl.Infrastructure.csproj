@@ -15,4 +15,8 @@
     <ProjectReference Include="..\RCD.Web.AccesoControl.Application\RCD.Web.AccesoControl.Application.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Settings\" />
+  </ItemGroup>
+
 </Project>

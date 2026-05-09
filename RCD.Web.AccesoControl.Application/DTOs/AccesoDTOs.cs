@@ -2,10 +2,6 @@
 
 namespace RCD.Web.AccesoControl.Application.DTOs
 {
-    // ==========================================
-    // RESPUESTAS (GET / READ)
-    // ==========================================
-
     public record SolicitudPendienteResponse(
         int SolicitudId,
         int RegistroId,
@@ -37,10 +33,6 @@ namespace RCD.Web.AccesoControl.Application.DTOs
         string Codigo
     );
 
-    // ==========================================
-    // PETICIONES (POST / ACTION)
-    // ==========================================
-
     public record AprobarSolicitudRequest(
         [Required, Range(1, int.MaxValue)] int SolicitudId,
         [Required, Range(1, int.MaxValue)] int GafeteId
@@ -54,9 +46,5 @@ namespace RCD.Web.AccesoControl.Application.DTOs
     public record MarcarSalidaRequest(
         [Required, Range(1, int.MaxValue)] int RegistroId,
         [Required] string TipoRegistro // "Visitante" o "Proveedor"
-    );
-
-    public record RegistrarFcmTokenRequest(
-        [Required, StringLength(255, MinimumLength = 10)] string FcmToken
     );
 }

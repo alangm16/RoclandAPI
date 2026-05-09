@@ -1,13 +1,13 @@
-using DocumentFormat.OpenXml.InkML;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
-using RCD.Web.AccesoControl.Infrastructure.Persistence;
+using RCD.Web.AccesoControl.Infrastructure.Data;
 using RCD.Web.AccesoControl.Application.DTOs;
 using RCD.Web.AccesoControl.Domain.Models.Entities;
 using RCD.Web.AccesoControl.Application.Interfaces;
 using RCD.Web.AccesoControl.Infrastructure.Hubs;
 using Microsoft.Extensions.Logging;
 using MediatR;
+using RCD.Shared.Infrastructure.Notifications;
 
 namespace RCD.Web.AccesoControl.Infrastructure.Services;
 
@@ -19,17 +19,19 @@ public class AccesoService : IAccesoService
     private readonly IFcmService _fcm;
     private static readonly TimeSpan _offsetMexico = TimeSpan.FromHours(-6);
     private readonly IPublisher _publisher;
+    private readonly IPerfilFcmTokenProvider _tokenProvider;
 
     public AccesoService(
         AccesoControlWebDbContext db,
         IHubContext<AccesoControlHub> hub,
         ILogger<AccesoService> logger,
-        IFcmService fcm, IPublisher publisher)
+        IFcmService fcm, IPublisher publisher, IPerfilFcmTokenProvider tokenProvider)
     {
         _db = db;
         _hub = hub;
         _logger = logger;
         _fcm = fcm;
+        _tokenProvider = tokenProvider;
         _publisher = publisher;
     }
 
@@ -543,15 +545,15 @@ public class AccesoService : IAccesoService
         return true;
     }
 
-    public async Task<bool> GuardarFcmTokenAsync(int perfilId, string fcmToken) // ── FIX
-    {
-        var perfil = await _db.Perfiles.FindAsync(perfilId);
-        if (perfil is null) return false;
+    //public async Task<bool> GuardarFcmTokenAsync(int perfilId, string fcmToken) // ── FIX
+    //{
+    //    var perfil = await _db.Perfiles.FindAsync(perfilId);
+    //    if (perfil is null) return false;
 
-        perfil.FcmToken = fcmToken;
-        await _db.SaveChangesAsync();
-        return true;
-    }
+    //    perfil.FcmToken = fcmToken;
+    //    await _db.SaveChangesAsync();
+    //    return true;
+    //}
 
     private async Task ActualizarContadorAsync(int personaId)
     {
@@ -563,22 +565,24 @@ public class AccesoService : IAccesoService
     }
 
     private async Task EnviarPushAGuardiasAsync(
-        string titulo, string cuerpo, int solicitudId, string tipoRegistro)
+    string titulo, string cuerpo, int solicitudId, string tipoRegistro)
     {
-        // ── FIX: Buscar FCM Tokens en la tabla de Perfiles (Guardias, Supervisores, Admins)
-        var tokens = await _db.Perfiles
-            .Where(p => p.Activo && p.FcmToken != null &&
-                       (p.TipoPerfil == "Guardia" || p.TipoPerfil == "Administrador" || p.TipoPerfil == "Supervisor" || p.TipoPerfil == "Gerente"))
-            .Select(p => p.FcmToken!)
+        // Obtener los SuperAdminUsuarioIds de todos los perfiles activos en este proyecto
+        var superAdminIds = await _db.Perfiles
+            .Where(p => p.Activo)
+            .Select(p => p.SuperAdminUsuarioId)
             .ToListAsync();
+
+        // Obtener sus FCM tokens desde SuperAdmin via la interfaz
+        var tokens = await _tokenProvider.ObtenerTokensActivosAsync(superAdminIds);
 
         foreach (var token in tokens)
         {
             await _fcm.EnviarAsync(token, titulo, cuerpo, new Dictionary<string, string>
-            {
-                { "solicitudId", solicitudId.ToString() },
-                { "tipoRegistro", tipoRegistro }
-            });
+        {
+            { "solicitudId", solicitudId.ToString() },
+            { "tipoRegistro", tipoRegistro }
+        });
         }
     }
 

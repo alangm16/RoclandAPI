@@ -2,7 +2,7 @@
 using Microsoft.Extensions.Caching.Memory;
 using RCD.Web.AccesoControl.Application.DTOs;
 using RCD.Web.AccesoControl.Application.Interfaces;
-using RCD.Web.AccesoControl.Infrastructure.Persistence;
+using RCD.Web.AccesoControl.Infrastructure.Data;
 
 namespace RCD.Web.AccesoControl.Infrastructure.Services;
 

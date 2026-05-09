@@ -1,23 +1,17 @@
-﻿namespace RCD.Web.AccesoControl.Domain.Models.Entities
-{
-    public class Perfil
-    {
-        public int Id { get; set; }
-        public int SuperAdminUsuarioId { get; set; }
-        public string NombreCompleto { get; set; } = string.Empty;
-        public string? NumeroEmpleado { get; set; }
-        public string TipoPerfil { get; set; } = string.Empty;
-        public string? Turno { get; set; }
-        public string? DeviceToken { get; set; }
-        public string? FcmToken { get; set; }
-        public bool Activo { get; set; } = true;
-        public DateTime FechaCreacion { get; set; } = DateTime.Now;
-        public DateTime? FechaModificacion { get; set; }
+﻿using RCD.Web.AccesoControl.Domain.Models.Entities.Base;
+using RCD.Web.AccesoControl.Domain.Models.Entities;
 
-        // Propiedades de navegación
-        public ICollection<RegistroVisitante> RegistrosVisitantesEntrada { get; set; } = new List<RegistroVisitante>();
-        public ICollection<RegistroVisitante> RegistrosVisitantesSalida { get; set; } = new List<RegistroVisitante>();
-        public ICollection<RegistroProveedor> RegistrosProveedoresEntrada { get; set; } = new List<RegistroProveedor>();
-        public ICollection<RegistroProveedor> RegistrosProveedoresSalida { get; set; } = new List<RegistroProveedor>();
-    }
+namespace RCD.Web.AccesoControl.Domain.Models.Entities;
+
+public class Perfil : AuditableEntity
+{
+    public int SuperAdminUsuarioId { get; set; }
+    public string NombreCompleto { get; set; } = null!;
+    public string? NumeroEmpleado { get; set; }
+    public string? Turno { get; set; }
+    public ICollection<RegistroVisitante> EntradasVisitantes { get; set; } = [];
+    public ICollection<RegistroVisitante> SalidasVisitantes { get; set; } = [];
+    public ICollection<RegistroProveedor> EntradasProveedores { get; set; } = [];
+    public ICollection<RegistroProveedor> SalidasProveedores { get; set; } = [];
+    public ICollection<SolicitudPendiente> SolicitudesResueltas { get; set; } = [];
 }

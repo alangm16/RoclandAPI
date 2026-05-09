@@ -25,6 +25,7 @@ public class JwtService(IOptions<JwtSettings> options) : IJwtService
             new("codigoProyecto", claims.CodigoProyecto),
             new("rolId",          claims.RolId.ToString()),
             new("nombreRol",      claims.NombreRol),
+            new(ClaimTypes.Role,  claims.NombreRol),
             new("nivelRol",       claims.NivelRol.ToString()),
             new("plataforma",     claims.Plataforma),
         };
@@ -40,6 +41,7 @@ public class JwtService(IOptions<JwtSettings> options) : IJwtService
             new(JwtRegisteredClaimNames.UniqueName, claims.Username),
             new("esMaestro",  "true"),
             new("rolSA",      claims.RolSA),
+            new(ClaimTypes.Role, claims.RolSA),
             new("nivelSA",    claims.NivelSA.ToString()),
             new("plataforma", claims.Plataforma),
         };

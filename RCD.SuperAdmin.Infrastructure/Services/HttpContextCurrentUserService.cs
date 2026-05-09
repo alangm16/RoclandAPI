@@ -1,7 +1,7 @@
 ﻿using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Http;
-using RCD.SuperAdmin.Application.Interfaces;
+using RCD.Shared.Kernel.Interfaces;
 
 namespace RCD.SuperAdmin.Infrastructure.Services;
 

@@ -1,4 +1,4 @@
-﻿namespace RCD.Web.AccesoControl.Application.Interfaces;
+﻿namespace RCD.Shared.Infrastructure.Notifications;
 
 public interface IFcmService
 {

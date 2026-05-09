@@ -1,11 +1,10 @@
-﻿namespace RCD.Web.AccesoControl.Domain.Models.Entities
-{
-    public class Area
-    {
-        public int Id { get; set; }
-        public string Nombre { get; set; } = string.Empty;
-        public bool Activo { get; set; } = true;
+﻿using RCD.Web.AccesoControl.Domain.Models.Entities.Base;
+using RCD.Web.AccesoControl.Domain.Models.Entities;
 
-        public ICollection<RegistroVisitante> RegistrosVisitantes { get; set; } = [];
-    }
+namespace RCD.Web.AccesoControl.Domain.Models.Entities;
+
+public class Area : AuditableEntity
+{
+    public string Nombre { get; set; } = null!;
+    public ICollection<RegistroVisitante> RegistrosVisitantes { get; set; } = [];
 }

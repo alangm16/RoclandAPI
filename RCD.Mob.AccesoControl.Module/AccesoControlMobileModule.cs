@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using RCD.Mob.AccesoControl.Infrastructure.DependencyInjection;
-using RCD.Mob.AccesoControl.Web.Controllers;
+//using RCD.Mob.AccesoControl.Web.Controllers;
 using RCD.Shared.Kernel.Modularity;
 
 namespace RCD.Mob.AccesoControl.Infrastructure;
@@ -16,9 +16,9 @@ public class AccesoControlMobileModule : IRoclandModule
     public void ConfigureServices(IServiceCollection services, IConfiguration configuration)
     {
         // Registrar los controllers de este módulo
-        services.AddControllers()
-            .AddApplicationPart(
-                typeof(GuardiasController).Assembly);
+        //services.AddControllers()
+        //    .AddApplicationPart(
+        //        typeof(GuardiasController).Assembly);
 
         // Registrar policy Mobile
         services.AddAccesoControlMobileModule(configuration);

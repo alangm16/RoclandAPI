@@ -1,5 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using RCD.SuperAdmin.Application.Interfaces;
+using RCD.Shared.Kernel.Interfaces;
 using RCD.SuperAdmin.Domain.Entities;
 using RCD.SuperAdmin.Domain.Base;
 

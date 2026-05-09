@@ -1,10 +1,13 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using RCD.Shared.Infrastructure.Notifications;
+using RCD.Shared.Kernel.Interfaces;
+using RCD.Shared.Kernel.Settings;
 using RCD.SuperAdmin.Application.Interfaces;
 using RCD.SuperAdmin.Infrastructure.Data;
+using RCD.SuperAdmin.Infrastructure.Notifications;
 using RCD.SuperAdmin.Infrastructure.Services;
-using RCD.Shared.Kernel.Settings;
 
 namespace RCD.SuperAdmin.Infrastructure.DependencyInjection;
 
@@ -27,9 +30,11 @@ public static class SuperAdminSetup
         var jwtSettings = jwtSection.Get<JwtSettings>()!;
 
         // ── Servicios de Infrastructure ───────────────────────────────────────
-        services.AddHttpContextAccessor();                             // requerido por ICurrentUserService
+        services.AddHttpContextAccessor();                             
         services.AddScoped<IJwtService, JwtService>();
         services.AddScoped<ICurrentUserService, HttpContextCurrentUserService>();
+        services.AddScoped<IFcmTokenRepository, SuperAdminFcmTokenRepository>();
+        services.AddHttpClient<IFcmService, FcmService>();
 
         // ── Servicios de Application ──────────────────────────────────────────
         services.AddScoped<IAuthService, AuthService>();

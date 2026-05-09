@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using RCD.SuperAdmin.Application.Interfaces;
+using RCD.Shared.Kernel.Interfaces;
 
 namespace RCD.SuperAdmin.Web.Controllers;
 

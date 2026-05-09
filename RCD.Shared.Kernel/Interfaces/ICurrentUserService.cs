@@ -1,4 +1,4 @@
-﻿namespace RCD.SuperAdmin.Application.Interfaces;
+﻿namespace RCD.Shared.Kernel.Interfaces;
 
 public interface ICurrentUserService
 {

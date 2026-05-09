@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
-using RCD.Web.AccesoControl.Infrastructure.Persistence;
+using RCD.Web.AccesoControl.Infrastructure.Data;
 using RCD.Web.AccesoControl.Application.DTOs;
 using RCD.Web.AccesoControl.Domain.Models.Entities;
 using RCD.Web.AccesoControl.Application.Interfaces;
@@ -421,7 +421,7 @@ public class AdminService : IAdminService
                 g.Id,
                 g.NombreCompleto,
                 g.NumeroEmpleado ?? "N/A",
-                g.TipoPerfil,
+                g.Turno ?? "Sin turno",   // Rol ← antes g.TipoPerfil
                 g.Activo,
                 g.FechaCreacion
             ))
@@ -432,12 +432,11 @@ public class AdminService : IAdminService
 
     public async Task<bool> ActualizarGuardiaAsync(int id, GuardiaUpdateDto dto)
     {
-        // Solo actualizamos propiedades operativas, ya que NombreCompleto viene de SuperAdmin
         var perfil = await _db.Perfiles.FindAsync(id);
         if (perfil is null) return false;
 
-        perfil.Activo = dto.Activo;
-        // perfil.Turno = dto.Turno; // (Si el frontend lo enviara)
+        perfil.NumeroEmpleado = dto.NumeroEmpleado ?? perfil.NumeroEmpleado;
+        perfil.Turno = dto.Turno ?? perfil.Turno;
 
         return await _db.SaveChangesAsync() > 0;
     }
@@ -570,7 +569,7 @@ public class AdminService : IAdminService
 
             var color = item.EstadoAcceso switch
             {
-                "Aprobado" or "Salido" => XLColor.FromHtml("#F0FDF4"),
+                "Aprobado" or "Finalizado" => XLColor.FromHtml("#F0FDF4"),
                 "Rechazado" => XLColor.FromHtml("#FEF2F2"),
                 _ => XLColor.FromHtml("#FFFBEB")
             };
@@ -665,7 +664,7 @@ public class AdminService : IAdminService
 
                         var estadoColor = item.EstadoAcceso switch
                         {
-                            "Aprobado" or "Salido" => "#16A34A",
+                            "Aprobado" or "Finalizado" => "#16A34A",
                             "Rechazado" => "#DC2626",
                             _ => "#D97706"
                         };

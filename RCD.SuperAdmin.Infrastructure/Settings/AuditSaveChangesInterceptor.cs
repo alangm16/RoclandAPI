@@ -1,7 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
-using RCD.SuperAdmin.Application.Interfaces;
 using RCD.SuperAdmin.Domain.Base;
+using RCD.Shared.Kernel.Interfaces;
 
 public class AuditSaveChangesInterceptor : SaveChangesInterceptor
 {

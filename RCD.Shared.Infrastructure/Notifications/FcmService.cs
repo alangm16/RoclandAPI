@@ -1,14 +1,11 @@
-﻿using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
+﻿using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using RCD.Web.AccesoControl.Application.Interfaces;
-using RCD.Web.AccesoControl.Infrastructure.Persistence;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 
-namespace RCD.Web.AccesoControl.Infrastructure.Services;
+namespace RCD.Shared.Infrastructure.Notifications;
 
 public class FcmService : IFcmService
 {
@@ -16,16 +13,18 @@ public class FcmService : IFcmService
     private readonly IConfiguration _config;
     private readonly ILogger<FcmService> _logger;
     private readonly IServiceScopeFactory _scopeFactory;
+    private readonly IFcmTokenRepository _tokenRepository;
 
     private string FcmEndpoint =>
         $"https://fcm.googleapis.com/v1/projects/{_config["Firebase:ProjectId"]}/messages:send";
 
-    public FcmService(HttpClient http, IConfiguration config, ILogger<FcmService> logger, IServiceScopeFactory scopeFactory)
+    public FcmService(HttpClient http, IConfiguration config, ILogger<FcmService> logger, IServiceScopeFactory scopeFactory, IFcmTokenRepository tokenRepository)
     {
         _http = http;
         _config = config;
         _logger = logger;
         _scopeFactory = scopeFactory;
+        _tokenRepository = tokenRepository;
     }
 
     public async Task EnviarAsync(string deviceToken, string titulo, string cuerpo, Dictionary<string, string>? data = null)
@@ -75,25 +74,16 @@ public class FcmService : IFcmService
         }
     }
 
-    // ── FIX: Actualizado para limpiar la tabla de Perfiles
     private async Task LimpiarTokenMuertoAsync(string tokenInvalido)
     {
         try
         {
-            using var scope = _scopeFactory.CreateScope();
-            var db = scope.ServiceProvider.GetRequiredService<AccesoControlWebDbContext>();
-
-            var perfil = await db.Perfiles.FirstOrDefaultAsync(p => p.FcmToken == tokenInvalido);
-            if (perfil != null)
-            {
-                perfil.FcmToken = null;
-                await db.SaveChangesAsync();
-                _logger.LogInformation("Token obsoleto eliminado exitosamente para el Perfil ID: {PerfilId}", perfil.Id);
-            }
+            await _tokenRepository.InvalidarTokenAsync(tokenInvalido);
+            _logger.LogInformation("Token FCM obsoleto invalidado: {Token}", tokenInvalido[..10]);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error al intentar limpiar el token inválido de la base de datos.");
+            _logger.LogError(ex, "Error al invalidar token FCM.");
         }
     }
 

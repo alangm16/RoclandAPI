@@ -2,9 +2,6 @@
 
 namespace RCD.Web.AccesoControl.Application.DTOs;
 
-// ==========================================
-// ── KPIs & DASHBOARD ──
-// ==========================================
 public record DashboardKpiDto(
     int DentroAhora,
     int AccesosHoy,
@@ -30,9 +27,6 @@ public record AreaVisitadaDto(
     int Total
 );
 
-// ==========================================
-// ── HISTORIAL ──
-// ==========================================
 public record HistorialAccesoDto(
     int Id,
     string Tipo,
@@ -49,9 +43,6 @@ public record HistorialAccesoDto(
     string Guardia // Mantenemos el nombre de la propiedad, aunque ahora guarda el NombreCompleto del Perfil
 );
 
-// ==========================================
-// ── PERSONAS ──
-// ==========================================
 public record PersonaPerfilDto(
     int Id,
     string Nombre,
@@ -65,9 +56,6 @@ public record PersonaPerfilDto(
     DateTime? FechaUltimaVisita
 );
 
-// ==========================================
-// ── CATÁLOGOS ──
-// ==========================================
 public record CatalogoCreateDto(
     [Required(ErrorMessage = "El nombre es obligatorio")]
     [StringLength(100, MinimumLength = 2, ErrorMessage = "Debe tener entre 2 y 100 caracteres")]
@@ -78,9 +66,6 @@ public record AreaDto(int Id, string Nombre, bool Activo);
 public record MotivoDto(int Id, string Nombre, bool Activo);
 public record TipoIdDto(int Id, string Nombre, bool Activo);
 
-// ==========================================
-// ── GUARDIAS (Ahora Perfiles Operativos) ──
-// ==========================================
 public record GuardiaListDto(
     int Id,
     string Nombre,
@@ -91,5 +76,6 @@ public record GuardiaListDto(
 );
 
 public record GuardiaUpdateDto(
-    bool Activo
+    string? NumeroEmpleado,
+    string? Turno   // Matutino | Vespertino | Nocturno | Mixto | null
 );

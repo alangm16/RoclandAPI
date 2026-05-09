@@ -1,69 +1,83 @@
-﻿using Microsoft.AspNetCore.Authorization;
+﻿// RCD.SuperAdmin.Web/Controllers/AuthController.cs
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RCD.SuperAdmin.Application.DTOs.Auth;
 using RCD.SuperAdmin.Application.Interfaces;
-using RCD.SuperAdmin.Infrastructure.Services;
 
 namespace RCD.SuperAdmin.Web.Controllers;
 
 [ApiController]
 [Route("api/superadmin/[controller]")]
 [ApiExplorerSettings(GroupName = "superadmin")]
-public class AuthController(IAuthService authService) : ControllerBase
+public class AuthController(
+    IAuthService authService,
+    ICurrentUserService currentUserService) : ControllerBase
 {
-    [HttpPost("login")]
-    public async Task<IActionResult> Login([FromBody] LoginRequest request)
+    // ── FLUJO 1: LOGIN ESPECÍFICO (MÓVIL / DESKTOP) ──
+    [HttpPost("login-directo")]
+    [AllowAnonymous]
+    public async Task<IActionResult> LoginDirecto([FromBody] LoginDirectoDto request)
     {
-        var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
-        var result = await authService.LoginAsync(request, ip);
-        return result is null
-            ? Unauthorized(new { mensaje = "Credenciales incorrectas o cuenta bloqueada." })
-            : Ok(result);
+        try
+        {
+            var result = await authService.LoginDirectoAsync(request);
+            return Ok(result);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return Unauthorized(new { mensaje = ex.Message });
+        }
     }
 
+    // ── FLUJO 2: LOGIN MULTI-PROYECTO (PANEL WEB) ──
+    [HttpPost("login-maestro")]
+    [AllowAnonymous]
+    public async Task<IActionResult> LoginMaestro([FromBody] LoginMaestroDto request)
+    {
+        try
+        {
+            var result = await authService.LoginMaestroAsync(request);
+            return Ok(result);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            // Atrapamos la excepción del servicio y devolvemos un 401 limpio a Angular
+            return Unauthorized(new { mensaje = ex.Message });
+        }
+    }
+
+    // ── FLUJO 3: RENOVACIÓN DE TOKENS ──
     [HttpPost("refresh")]
-    public async Task<IActionResult> Refresh([FromBody] RefreshTokenRequest request)
+    [AllowAnonymous]
+    public async Task<IActionResult> Refresh([FromBody] RefreshTokenDto request)
     {
-        var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
-        var result = await authService.RefreshAsync(request.RefreshToken, ip);
-        return result is null
-            ? Unauthorized(new { mensaje = "Refresh token inválido o expirado." })
-            : Ok(result);
+        try
+        {
+            var result = await authService.RefrescarTokenAsync(request);
+            return Ok(result);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return Unauthorized(new { mensaje = ex.Message });
+        }
     }
 
+    // ── FLUJO 4: CIERRE DE SESIÓN ──
     [HttpPost("logout")]
-    [Authorize]
-    public async Task<IActionResult> Logout([FromBody] RefreshTokenRequest request)
+    [Authorize] // ¡Solo usuarios logueados pueden hacer logout!
+    public async Task<IActionResult> Logout()
     {
-        await authService.RevocarRefreshTokenAsync(request.RefreshToken);
-        return NoContent();
-    }
+        // Extraemos los datos 100% confiables desde el Token JWT
+        var userId = currentUserService.GetUserId();
+        if (userId is null)
+            return Unauthorized();
 
-    [HttpPost("qr-login")]
-    public async Task<IActionResult> QrLogin([FromBody] QrLoginRequest request, CancellationToken ct)
-    {
-        if (string.IsNullOrWhiteSpace(request.QrCode))
-            return BadRequest(new { mensaje = "El código QR es requerido." });
+        var plataforma = currentUserService.GetPlataforma();
+        var proyectoId = currentUserService.GetProyectoId();
 
-        var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
+        // Mandamos revocar los tokens a la base de datos
+        await authService.LogoutAsync(userId.Value, plataforma, proyectoId);
 
-        // Usamos authService (sin guion bajo) y le pasamos los datos para el Log
-        var result = await authService.LoginConQrAsync(request.QrCode, ip, "Mobile", ct);
-
-        return result is null
-            ? Unauthorized(new { mensaje = "Código QR inválido, usuario inactivo o cuenta bloqueada." })
-            : Ok(result);
-    }
-
-    [HttpGet("descubrir-proyectos")]
-    [AllowAnonymous] 
-    public async Task<IActionResult> DescubrirProyectos([FromQuery] string identificador, CancellationToken ct)
-    {
-        if (string.IsNullOrWhiteSpace(identificador))
-            return BadRequest(new { mensaje = "El identificador (usuario o correo) es requerido." });
-
-        var proyectos = await authService.DescubrirProyectosAsync(identificador, ct);
-
-        return Ok(proyectos);
+        return NoContent(); // 204: Todo salió bien, no hay contenido que devolver
     }
 }

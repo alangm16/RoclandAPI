@@ -16,7 +16,11 @@ namespace RCD.SuperAdmin.Module
             services.AddControllers()
                 .AddApplicationPart(typeof(Web.Controllers.AuthController).Assembly);
             services.AddControllers()
-                .AddApplicationPart(typeof(Web.Controllers.PermisosController).Assembly);
+                .AddApplicationPart(typeof(Web.Controllers.MenuController).Assembly);
+            services.AddControllers()
+                .AddApplicationPart(typeof(Web.Controllers.ProyectosController).Assembly);
+            services.AddControllers()
+                .AddApplicationPart(typeof(Web.Controllers.UsuariosController).Assembly);
 
             services.AddSuperAdminInfrastructure(configuration);
         }

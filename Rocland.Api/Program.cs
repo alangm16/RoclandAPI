@@ -6,6 +6,7 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using QuestPDF.Infrastructure;
 using RCD.Shared.Kernel.Modularity;
+using RCD.Shared.Kernel.Settings;
 using Serilog;
 using Serilog.Events;
 using Swashbuckle.AspNetCore.SwaggerGen;
@@ -33,6 +34,7 @@ Log.Logger = new LoggerConfiguration()
     .CreateLogger();
 
 var builder = WebApplication.CreateBuilder(args);
+
 builder.Host.UseSerilog();
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -121,44 +123,50 @@ foreach (var assembly in moduleAssemblies)
 // SignalR (usado por AccesoControl y potencialmente otros módulos)
 builder.Services.AddSignalR();
 
-// Autenticación JWT
-// La clave y el issuer viven en appsettings.Development.json del host (o de un módulo de auth).
-builder.Services.AddAuthentication(options =>
-{
-    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-})
-.AddJwtBearer(options =>
-{
-    options.TokenValidationParameters = new TokenValidationParameters
-    {
-        ValidateIssuer = true,
-        ValidateAudience = true,
-        ValidateLifetime = true,
-        ValidateIssuerSigningKey = true,
-        ValidIssuer = builder.Configuration["Jwt:Issuer"],
-        ValidAudience = builder.Configuration["Jwt:Audience"],
-        IssuerSigningKey = new SymmetricSecurityKey(
-            Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]!))
-    };
+var jwt = builder.Configuration.GetSection("Jwt").Get<JwtSettings>()
+          ?? throw new InvalidOperationException("Jwt config missing");
 
-    // Permite que SignalR reciba el token vía query string (?access_token=...)
-    options.Events = new JwtBearerEvents
+builder.Services.Configure<JwtSettings>(
+    builder.Configuration.GetSection("Jwt"));
+
+builder.Services
+    .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
     {
-        OnMessageReceived = context =>
+        options.TokenValidationParameters = new TokenValidationParameters
         {
-            var accessToken = context.Request.Query["access_token"];
-            var path = context.HttpContext.Request.Path;
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
 
-            if (!string.IsNullOrEmpty(accessToken) &&
-                path.Value?.Contains("accesohub", StringComparison.OrdinalIgnoreCase) == true)
+            ValidIssuer = jwt.Issuer,
+            ValidAudience = jwt.Audience,
+
+            IssuerSigningKey = new SymmetricSecurityKey(
+                Encoding.UTF8.GetBytes(jwt.SecretKey)
+            ),
+
+            ClockSkew = TimeSpan.Zero
+        };
+
+        options.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = context =>
             {
-                context.Token = accessToken;
+                var accessToken = context.Request.Query["access_token"];
+                var path = context.HttpContext.Request.Path;
+
+                if (!string.IsNullOrEmpty(accessToken) &&
+                    path.Value?.Contains("accesohub", StringComparison.OrdinalIgnoreCase) == true)
+                {
+                    context.Token = accessToken;
+                }
+
+                return Task.CompletedTask;
             }
-            return Task.CompletedTask;
-        }
-    };
-});
+        };
+    });
 
 builder.Services.AddAuthorization(options =>
 {
@@ -182,7 +190,7 @@ builder.Services.AddAuthorization(options =>
 
     options.AddPolicy("SuperAdminPolicy", policy =>
     policy.RequireAuthenticatedUser()
-          .RequireRole("Programador", "Supervisor")
+          .RequireRole("SuperAdmin", "Admin")
           .AddAuthenticationSchemes(JwtBearerDefaults.AuthenticationScheme));
 });
 
@@ -314,7 +322,6 @@ builder.Services.AddRateLimiter(options =>
 // QuestPDF
 QuestPDF.Settings.License = LicenseType.Community;
 
-
 // ─────────────────────────────────────────────────────────────────────────────
 // INYECCIÓN DE DEPENDENCIAS DE MÓDULOS
 // Cada módulo registra sus propios servicios, DbContexts y repositorios.
@@ -384,9 +391,9 @@ app.Use(async (context, next) =>
 if (!app.Environment.IsDevelopment())
     app.UseHsts();
 
-app.UseRouting();   
+app.UseRouting();
 
-app.UseCors("AngularPanelPolicy");  
+app.UseCors("AngularPanelPolicy");
 
 app.UseAuthentication();
 app.UseAuthorization();

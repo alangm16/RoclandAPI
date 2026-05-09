@@ -1,0 +1,85 @@
+﻿namespace RCD.SuperAdmin.Application.DTOs.Proyectos;
+
+public record ProyectoListDto(
+    int Id,
+    string Codigo,
+    string Nombre,
+    string Plataforma,
+    string? IconoCss,
+    string Estado,
+    string? Version,
+    int Orden,
+    bool Activo
+);
+
+public record ProyectoDetalleDto(
+    int Id,
+    string Codigo,
+    string Nombre,
+    string Plataforma,
+    string? IconoCss,
+    string? UrlBase,
+    string Estado,
+    string? Version,
+    string? Descripcion,
+    int Orden,
+    bool Activo,
+    IEnumerable<RolDto> Roles,
+    IEnumerable<VistaDto> Vistas
+);
+
+public record RolDto(
+    int Id,
+    string Nombre,
+    int Nivel,
+    string? Descripcion,
+    bool Activo
+);
+
+public record CrearRolDto(
+    string Nombre,
+    int Nivel,
+    string? Descripcion
+);
+
+public record VistaDto(
+    int Id,
+    string Codigo,
+    string Nombre,
+    string Ruta,
+    string? Icono,
+    string? Descripcion,
+    int Orden,
+    bool Activo
+);
+
+public record CrearVistaDto(
+    string Codigo,
+    string Nombre,
+    string Ruta,
+    string? Icono,
+    string? Descripcion,
+    int Orden = 0
+);
+
+public record CrearProyectoDto(
+    string Codigo,
+    string Nombre,
+    string Plataforma,
+    string? IconoCss,
+    string? UrlBase,
+    string? Version,
+    string? Descripcion,
+    int Orden = 0
+);
+
+public record ActualizarProyectoDto(
+    string Nombre,
+    string Plataforma,
+    string? IconoCss,
+    string? UrlBase,
+    string Estado,
+    string? Version,
+    string? Descripcion,
+    int Orden
+);

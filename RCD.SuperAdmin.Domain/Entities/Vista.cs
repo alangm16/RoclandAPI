@@ -1,21 +1,15 @@
-﻿
-using System.Numerics;
-
-namespace RCD.SuperAdmin.Domain.Entities
+﻿namespace RCD.SuperAdmin.Domain.Entities;
+public class Vista
 {
-    public class Vista
-    {
-        public int Id { get; set; }
-        public int ProyectoId { get; set; }
-        public Proyecto Proyecto { get; set; } = null!;
-        public string Codigo { get; set; } = string.Empty;
-        public string Nombre { get; set; } = string.Empty;
-        public string Ruta { get; set; } = string.Empty;
-        public string? Icono { get; set; }
-        public bool Activo { get; set; } = true;
-        public int Orden { get; set; }
-
-        public ICollection<PermisoRol> PermisosRol { get; set; } = [];
-        public ICollection<PermisoUsuario> PermisosUsuario { get; set; } = [];
-    }
+    public int Id { get; set; }
+    public int ProyectoId { get; set; }
+    public string Codigo { get; set; } = null!;
+    public string Nombre { get; set; } = null!;
+    public string Ruta { get; set; } = null!;
+    public string? Icono { get; set; }
+    public string? Descripcion { get; set; }
+    public int Orden { get; set; } = 0;
+    public bool Activo { get; set; } = true;
+    public Proyecto Proyecto { get; set; } = null!;
+    public ICollection<UsuarioVistaAcceso> AccesosUsuario { get; set; } = [];
 }

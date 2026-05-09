@@ -1,27 +1,24 @@
-﻿
-namespace RCD.SuperAdmin.Domain.Entities
-{
-    public class Usuario
-    {
-        public int Id { get; set; }
-        public string NombreCompleto { get; set; } = string.Empty;
-        public string Username { get; set; } = string.Empty;
-        public string Email { get; set; } = string.Empty;
-        public string PasswordHash { get; set; } = string.Empty;
-        public string? QRCode { get; set; }
-        public string? DeviceToken { get; set; }
-        public string? FcmToken { get; set; }
-        public int IntentosFallidos { get; set; } = 0;
-        public DateTime? BloqueadoHasta { get; set; }
-        public DateTime? UltimoAcceso { get; set; }
-        public bool Activo { get; set; } = true;
-        public DateTime FechaCreacion { get; set; } = DateTime.UtcNow;
-        public DateTime FechaModificacion { get; set; } = DateTime.UtcNow;
+﻿using RCD.SuperAdmin.Domain.Entities;
+using RCD.SuperAdmin.Domain.Base;
 
-        // Navegación
-        public ICollection<UsuarioRol> Roles { get; set; } = [];
-        public ICollection<PermisoUsuario> Permisos { get; set; } = [];
-        public ICollection<RefreshToken> RefreshTokens { get; set; } = [];
-        public ICollection<LogAcceso> Logs { get; set; } = [];
-    }
+namespace RCD.SuperAdmin.Domain.Entities;
+
+public class Usuario : AuditableEntity
+{
+    public string NombreCompleto { get; set; } = null!;
+    public string Username { get; set; } = null!;
+    public string? Email { get; set; }
+    public string PasswordHash { get; set; } = null!;
+    public string? QRCode { get; set; }
+    public int? RolSAId { get; set; }
+    public int IntentosFallidos { get; set; } = 0;
+    public DateTime? BloqueadoHasta { get; set; }
+    public DateTime? UltimoAcceso { get; set; }
+    public RolSA? RolSA { get; set; }
+
+    public ICollection<ProyectoUsuarioRol> ProyectosAsignados { get; set; } = [];
+    public ICollection<UsuarioVistaAcceso> VistasAcceso { get; set; } = [];
+    public ICollection<TokenDispositivo> TokensDispositivo { get; set; } = [];
+    public ICollection<RefreshToken> RefreshTokens { get; set; } = [];
+    public ICollection<LogAcceso> LogsAcceso { get; set; } = [];
 }

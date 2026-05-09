@@ -1,231 +1,386 @@
-﻿// AuthService.cs
-using DocumentFormat.OpenXml.InkML;
-using Microsoft.EntityFrameworkCore;
-using RCD.Shared.Infrastructure.Security;
+﻿using Microsoft.EntityFrameworkCore;
 using RCD.SuperAdmin.Application.DTOs.Auth;
 using RCD.SuperAdmin.Application.Interfaces;
 using RCD.SuperAdmin.Domain.Entities;
 using RCD.SuperAdmin.Infrastructure.Data;
+using RCD.Shared.Kernel.Settings;
+using Microsoft.Extensions.Options;
 
 namespace RCD.SuperAdmin.Infrastructure.Services;
 
 public class AuthService(
     SuperAdminDbContext db,
-    ITokenService tokenService,
-    IPermisosService permisosService) : IAuthService
+    IJwtService jwtService,
+    IOptions<JwtSettings> jwtSettings) : IAuthService
 {
-    private const int MaxIntentosFallidos = 5;
-    private const int MinutosBloqueo = 15;
+    private readonly JwtSettings _jwt = jwtSettings.Value;
 
-    public async Task<LoginResponse?> LoginAsync(LoginRequest request, string? ipAddress)
+    public async Task<AuthResultDto> LoginDirectoAsync(LoginDirectoDto dto)
     {
+        // 1. Buscar usuario activo
         var usuario = await db.Usuarios
-            .Include(u => u.Roles).ThenInclude(ur => ur.Rol)
-            .FirstOrDefaultAsync(u => u.Username == request.Username);
+            .Include(u => u.RolSA)
+            .FirstOrDefaultAsync(u => u.Username == dto.Username && u.Activo);
 
-        // --- Registrar intento (exitoso o no) al final, pero evaluar primero ---
+        // 2. Validar existencia + bloqueo + contraseña
+        await ValidarCredencialesAsync(usuario, dto.Password, dto.CodigoProyecto);
 
+        // 3. Verificar que el usuario tenga un rol activo en el proyecto solicitado
+        var asignacion = await db.ProyectoUsuarioRoles
+            .Include(pur => pur.Proyecto)
+            .Include(pur => pur.Rol)
+            .FirstOrDefaultAsync(pur =>
+                pur.UsuarioId == usuario!.Id &&
+                pur.Proyecto.Codigo == dto.CodigoProyecto &&
+                pur.Activo == true &&
+                pur.Proyecto.Activo == true);
+
+        if (asignacion is null)
+            throw new UnauthorizedAccessException(
+                $"El usuario '{dto.Username}' no tiene acceso al proyecto '{dto.CodigoProyecto}'.");
+
+        // 4. Generar tokens
+        var tokenClaims = new TokenDirectoClaimsDto(
+            UsuarioId: usuario!.Id,
+            Username: usuario.Username,
+            ProyectoId: asignacion.ProyectoId,
+            CodigoProyecto: asignacion.Proyecto.Codigo,
+            RolId: asignacion.RolId,
+            NombreRol: asignacion.Rol.Nombre,
+            NivelRol: asignacion.Rol.Nivel,
+            Plataforma: dto.Plataforma
+        );
+
+        var accessToken = jwtService.GenerarTokenDirecto(tokenClaims);
+        var refreshToken = jwtService.GenerarRefreshToken();
+        var expiracion = DateTime.UtcNow.AddMinutes(_jwt.ExpirationMinutes);
+
+        // 5. Persistir RefreshToken
+        await GuardarRefreshTokenAsync(
+            usuario.Id, asignacion.ProyectoId, dto.Plataforma, refreshToken);
+
+        // 6. Actualizar TokenDispositivo (FCM / device)
+        await ActualizarTokenDispositivoAsync(
+            usuario.Id, asignacion.ProyectoId, dto.Plataforma);
+
+        // 7. Resetear intentos fallidos + UltimoAcceso
+        await RegistrarAccesoExitosoAsync(usuario, dto.CodigoProyecto, dto.Plataforma);
+
+        return new AuthResultDto(
+            AccessToken: accessToken,
+            RefreshToken: refreshToken,
+            Expiracion: expiracion,
+            Usuario: MapUsuarioToken(usuario)
+        );
+    }
+
+    public async Task<AuthMaestroResultDto> LoginMaestroAsync(LoginMaestroDto dto)
+    {
+        // 1. Buscar usuario activo con su rol SA
+        var usuario = await db.Usuarios
+            .Include(u => u.RolSA)
+            .FirstOrDefaultAsync(u => u.Username == dto.Username && u.Activo);
+
+        // 2. Validar credenciales (sin proyecto específico)
+        await ValidarCredencialesAsync(usuario, dto.Password, proyectoCodigo: null);
+
+        // 3. El usuario debe tener al menos RolSA para acceder al panel
+        if (usuario!.RolSAId is null)
+            throw new UnauthorizedAccessException(
+                "El usuario no tiene acceso al panel SuperAdmin.");
+
+        // 4. Obtener todos los proyectos a los que tiene acceso
+        var proyectos = await db.ProyectoUsuarioRoles
+            .Include(pur => pur.Proyecto)
+            .Include(pur => pur.Rol)
+            .Where(pur =>
+                pur.UsuarioId == usuario.Id &&
+                pur.Activo == true &&
+                pur.Proyecto.Activo == true)
+            .OrderBy(pur => pur.Proyecto.Orden)
+            .ToListAsync();
+
+        // 5. Generar token maestro
+        var tokenClaims = new TokenMaestroClaimsDto(
+            UsuarioId: usuario.Id,
+            Username: usuario.Username,
+            RolSA: usuario.RolSA!.Nombre,
+            NivelSA: usuario.RolSA!.Nivel,
+            Plataforma: dto.Plataforma
+        );
+
+        var accessToken = jwtService.GenerarTokenMaestro(tokenClaims);
+        var refreshToken = jwtService.GenerarRefreshToken();
+        var expiracion = DateTime.UtcNow.AddMinutes(_jwt.MaestroExpirationMinutes);
+
+        // 6. Persistir RefreshToken (proyectoId = null → sesión del panel SA)
+        await GuardarRefreshTokenAsync(
+            usuario.Id, proyectoId: null, dto.Plataforma, refreshToken);
+
+        // 7. Registrar acceso exitoso
+        await RegistrarAccesoExitosoAsync(usuario, proyectoCodigo: null, dto.Plataforma);
+
+        return new AuthMaestroResultDto(
+            AccessToken: accessToken,
+            RefreshToken: refreshToken,
+            Expiracion: expiracion,
+            Usuario: MapUsuarioToken(usuario),
+            ProyectosAccesibles: proyectos.Select(pur => new ProyectoAccesoDto(
+                Id: pur.ProyectoId,
+                Codigo: pur.Proyecto.Codigo,
+                Nombre: pur.Proyecto.Nombre,
+                Plataforma: pur.Proyecto.Plataforma,
+                IconoCss: pur.Proyecto.IconoCss,
+                UrlBase: pur.Proyecto.UrlBase,
+                RolEnProyecto: pur.Rol.Nombre,
+                NivelRol: pur.Rol.Nivel
+            ))
+        );
+    }
+
+    public async Task<AuthResultDto> RefrescarTokenAsync(RefreshTokenDto dto)
+    {
+        // 1. Buscar el RefreshToken vigente
+        var stored = await db.RefreshTokens
+            .Include(rt => rt.Usuario)
+                .ThenInclude(u => u.RolSA)
+            .Include(rt => rt.Proyecto)
+            .FirstOrDefaultAsync(rt =>
+                rt.Token == dto.RefreshToken &&
+                rt.Plataforma == dto.Plataforma &&
+                !rt.Revocado);
+
+        if (stored is null)
+            throw new UnauthorizedAccessException("RefreshToken inválido o revocado.");
+
+        if (stored.FechaExpiracion < DateTime.UtcNow)
+            throw new UnauthorizedAccessException("RefreshToken expirado.");
+
+        var usuario = stored.Usuario;
+
+        if (!usuario.Activo)
+            throw new UnauthorizedAccessException("El usuario está inactivo.");
+
+        // 2. Revocar el token usado (rotación)
+        stored.Revocado = true;
+        db.RefreshTokens.Update(stored);
+
+        // 3. Generar nuevos tokens
+        string accessToken;
+        var expiracion = DateTime.UtcNow.AddMinutes(_jwt.ExpirationMinutes);
+
+        if (stored.ProyectoId is not null)
+        {
+            // Refresh de token directo — recuperar asignación vigente
+            var asignacion = await db.ProyectoUsuarioRoles
+                .Include(pur => pur.Rol)
+                .FirstOrDefaultAsync(pur =>
+                    pur.UsuarioId == usuario.Id &&
+                    pur.ProyectoId == stored.ProyectoId &&
+                    pur.Activo);
+
+            if (asignacion is null)
+                throw new UnauthorizedAccessException(
+                    "El usuario ya no tiene acceso al proyecto.");
+
+            accessToken = jwtService.GenerarTokenDirecto(new TokenDirectoClaimsDto(
+                UsuarioId: usuario.Id,
+                Username: usuario.Username,
+                ProyectoId: stored.ProyectoId.Value,
+                CodigoProyecto: stored.Proyecto!.Codigo,
+                RolId: asignacion.RolId,
+                NombreRol: asignacion.Rol.Nombre,
+                NivelRol: asignacion.Rol.Nivel,
+                Plataforma: dto.Plataforma
+            ));
+        }
+        else
+        {
+            // Refresh de token maestro
+            if (usuario.RolSAId is null)
+                throw new UnauthorizedAccessException(
+                    "El usuario ya no tiene acceso al panel SuperAdmin.");
+
+            expiracion = DateTime.UtcNow.AddMinutes(_jwt.MaestroExpirationMinutes);
+
+            accessToken = jwtService.GenerarTokenMaestro(new TokenMaestroClaimsDto(
+                UsuarioId: usuario.Id,
+                Username: usuario.Username,
+                RolSA: usuario.RolSA!.Nombre,
+                NivelSA: usuario.RolSA!.Nivel,
+                Plataforma: dto.Plataforma
+            ));
+        }
+
+        // 4. Persistir nuevo RefreshToken (rotación completa)
+        var nuevoRefresh = jwtService.GenerarRefreshToken();
+        await GuardarRefreshTokenAsync(
+            usuario.Id, stored.ProyectoId, dto.Plataforma, nuevoRefresh);
+
+        await db.SaveChangesAsync();
+
+        return new AuthResultDto(
+            AccessToken: accessToken,
+            RefreshToken: nuevoRefresh,
+            Expiracion: expiracion,
+            Usuario: MapUsuarioToken(usuario)
+        );
+    }
+
+    public async Task LogoutAsync(int usuarioId, string plataforma, int? proyectoId)
+    {
+        // Revocar todos los RefreshTokens activos del usuario en esa plataforma/proyecto
+        var tokens = await db.RefreshTokens
+            .Where(rt =>
+                rt.UsuarioId == usuarioId &&
+                rt.Plataforma == plataforma &&
+                rt.ProyectoId == proyectoId &&
+                !rt.Revocado)
+            .ToListAsync();
+
+        foreach (var t in tokens)
+            t.Revocado = true;
+
+        await db.SaveChangesAsync();
+    }
+
+    private async Task ValidarCredencialesAsync(
+        Usuario? usuario, string password, string? proyectoCodigo)
+    {
+        // Fallo: usuario no existe — no revelar si el username es válido
         if (usuario is null)
         {
-            await RegistrarLogAsync(null, request.Username, false,
-                ipAddress, request.Plataforma, "Usuario no encontrado");
-            return null;
+            await RegistrarLogAsync(null, proyectoCodigo, "Desconocido",
+                exitoso: false, "Usuario no encontrado.");
+            throw new UnauthorizedAccessException("Credenciales inválidas.");
         }
 
-        // Cuenta bloqueada
+        // Fallo: cuenta bloqueada temporalmente
         if (usuario.BloqueadoHasta.HasValue && usuario.BloqueadoHasta > DateTime.UtcNow)
         {
-            await RegistrarLogAsync(usuario.Id, request.Username, false,
-                ipAddress, request.Plataforma,
-                $"Cuenta bloqueada hasta {usuario.BloqueadoHasta:HH:mm}");
-            return null;
+            await RegistrarLogAsync(usuario.Id, proyectoCodigo, usuario.Username,
+                exitoso: false,
+                $"Cuenta bloqueada hasta {usuario.BloqueadoHasta:HH:mm:ss} UTC.");
+            throw new UnauthorizedAccessException(
+                $"Cuenta bloqueada temporalmente. Intente después de {usuario.BloqueadoHasta:HH:mm} UTC.");
         }
 
-        // Contraseña incorrecta
-        if (!BCrypt.Net.BCrypt.Verify(request.Password, usuario.PasswordHash))
+        // Fallo: contraseña incorrecta
+        if (!BCrypt.Net.BCrypt.Verify(password, usuario.PasswordHash))
         {
             usuario.IntentosFallidos++;
-            if (usuario.IntentosFallidos >= MaxIntentosFallidos)
-                usuario.BloqueadoHasta = DateTime.UtcNow.AddMinutes(MinutosBloqueo);
 
+            // Bloquear tras 5 intentos — 15 minutos
+            if (usuario.IntentosFallidos >= 5)
+            {
+                usuario.BloqueadoHasta = DateTime.UtcNow.AddMinutes(15);
+                usuario.IntentosFallidos = 0;
+            }
+
+            db.Usuarios.Update(usuario);
             await db.SaveChangesAsync();
-            await RegistrarLogAsync(usuario.Id, request.Username, false,
-                ipAddress, request.Plataforma, "Contraseña incorrecta");
-            return null;
-        }
 
-        // --- Login exitoso ---
+            await RegistrarLogAsync(usuario.Id, proyectoCodigo, usuario.Username,
+                exitoso: false,
+                $"Contraseña incorrecta. Intento {usuario.IntentosFallidos}/5.");
+
+            throw new UnauthorizedAccessException("Credenciales inválidas.");
+        }
+    }
+
+    private async Task GuardarRefreshTokenAsync(
+        int usuarioId, int? proyectoId, string plataforma, string token)
+    {
+        db.RefreshTokens.Add(new RefreshToken
+        {
+            UsuarioId = usuarioId,
+            ProyectoId = proyectoId,
+            Plataforma = plataforma,
+            Token = token,
+            FechaExpiracion = DateTime.UtcNow.AddDays(_jwt.RefreshTokenDays),
+            Revocado = false,
+            FechaCreacion = DateTime.UtcNow
+        });
+    }
+
+    private async Task ActualizarTokenDispositivoAsync(
+        int usuarioId, int proyectoId, string plataforma)
+    {
+        var existing = await db.TokensDispositivo.FirstOrDefaultAsync(td =>
+            td.UsuarioId == usuarioId &&
+            td.ProyectoId == proyectoId &&
+            td.Plataforma == plataforma);
+
+        if (existing is null)
+        {
+            db.TokensDispositivo.Add(new TokenDispositivo
+            {
+                UsuarioId = usuarioId,
+                ProyectoId = proyectoId,
+                Plataforma = plataforma,
+                Activo = true,
+                FechaCreacion = DateTime.UtcNow,
+                FechaModificacion = DateTime.UtcNow
+            });
+        }
+        else
+        {
+            existing.Activo = true;
+            existing.FechaModificacion = DateTime.UtcNow;
+            db.TokensDispositivo.Update(existing);
+        }
+    }
+
+    private async Task RegistrarAccesoExitosoAsync(
+        Usuario usuario, string? proyectoCodigo, string plataforma)
+    {
         usuario.IntentosFallidos = 0;
         usuario.BloqueadoHasta = null;
         usuario.UltimoAcceso = DateTime.UtcNow;
+        db.Usuarios.Update(usuario);
 
-        var roles = usuario.Roles.Select(ur => ur.Rol.Nombre).ToList();
-        var accessToken = tokenService.GenerarAccessToken(usuario.Id, usuario.Username, roles);
-        var expira = tokenService.ObtenerExpiracionAccessToken();
-        var refreshTokenStr = tokenService.GenerarRefreshToken();
-
-        // Guardar refresh token
-        db.RefreshTokens.Add(new RefreshToken
-        {
-            UsuarioId = usuario.Id,
-            Token = refreshTokenStr,
-            FechaExpiracion = DateTime.UtcNow.AddDays(30),
-            IpCreacion = ipAddress,
-            DispositivoInfo = request.DispositivoInfo
-        });
+        await RegistrarLogAsync(usuario.Id, proyectoCodigo, usuario.Username,
+            exitoso: true, plataforma: plataforma);
 
         await db.SaveChangesAsync();
-
-        await RegistrarLogAsync(usuario.Id, request.Username, true,
-            ipAddress, request.Plataforma, "Login exitoso");
-
-        var proyectos = await permisosService.ResolverPermisosEfectivosAsync(usuario.Id);
-
-        return new LoginResponse(
-            accessToken, refreshTokenStr, expira,
-            usuario.NombreCompleto, usuario.Username,
-            roles, proyectos);
     }
 
-    public async Task<RefreshTokenResponse?> RefreshAsync(string refreshToken, string? ipAddress)
+    private async Task RegistrarLogAsync(
+        int? usuarioId, string? proyectoCodigo,
+        string usernameUsado, bool exitoso,
+        string? detalle = null, string plataforma = "Web")
     {
-        var tokenEntity = await db.RefreshTokens
-            .Include(rt => rt.Usuario)
-            .ThenInclude(u => u.Roles)
-            .ThenInclude(ur => ur.Rol)
-            .FirstOrDefaultAsync(rt => rt.Token == refreshToken);
+        int? proyectoId = null;
 
-        if (tokenEntity is null || tokenEntity.Revocado ||
-            tokenEntity.FechaExpiracion < DateTime.UtcNow ||
-            !tokenEntity.Usuario.Activo)
-            return null;
-
-        // Rotar: revocar el actual y emitir uno nuevo
-        tokenEntity.Revocado = true;
-
-        var usuario = tokenEntity.Usuario;
-        var roles = usuario.Roles.Select(ur => ur.Rol.Nombre).ToList();
-        var nuevoAccessToken = tokenService.GenerarAccessToken(
-            usuario.Id, usuario.Username, roles);
-        var nuevoRefreshToken = tokenService.GenerarRefreshToken();
-
-        db.RefreshTokens.Add(new RefreshToken
+        if (proyectoCodigo is not null)
         {
-            UsuarioId = usuario.Id,
-            Token = nuevoRefreshToken,
-            FechaExpiracion = DateTime.UtcNow.AddDays(30),
-            IpCreacion = ipAddress
-        });
-
-        await db.SaveChangesAsync();
-
-        return new RefreshTokenResponse(
-            nuevoAccessToken, nuevoRefreshToken,
-            tokenService.ObtenerExpiracionAccessToken());
-    }
-
-    public async Task RevocarRefreshTokenAsync(string refreshToken)
-    {
-        var token = await db.RefreshTokens
-            .FirstOrDefaultAsync(rt => rt.Token == refreshToken);
-        if (token is not null)
-        {
-            token.Revocado = true;
-            await db.SaveChangesAsync();
+            proyectoId = await db.Proyectos
+                .Where(p => p.Codigo == proyectoCodigo)
+                .Select(p => (int?)p.Id)
+                .FirstOrDefaultAsync();
         }
-    }
 
-    private async Task RegistrarLogAsync(int? usuarioId, string username,
-        bool exitoso, string? ip, string? plataforma, string? detalle)
-    {
         db.LogsAcceso.Add(new LogAcceso
         {
             UsuarioId = usuarioId,
-            UsernameUsado = username,
+            ProyectoId = proyectoId,
+            UsernameUsado = usernameUsado,
             Exitoso = exitoso,
-            IpAddress = ip,
             Plataforma = plataforma,
-            Detalle = detalle
-        });
-        await db.SaveChangesAsync();
-    }
-
-    public async Task<LoginResponse?> LoginConQrAsync(string qrCode, string? ipAddress = null, string? plataforma = "Mobile", CancellationToken ct = default)
-    {
-        // 1. Buscar al usuario por código QR asegurando traer sus Roles
-        var usuario = await db.Usuarios
-            .Include(u => u.Roles).ThenInclude(ur => ur.Rol)
-            .FirstOrDefaultAsync(u => u.QRCode == qrCode && u.Activo, ct);
-
-        if (usuario is null)
-        {
-            await RegistrarLogAsync(null, "QR_LOGIN", false,
-                ipAddress, plataforma, "Código QR no encontrado o usuario inactivo");
-            return null;
-        }
-
-        // 2. Verificar si la cuenta está bloqueada (reutilizando tu lógica)
-        if (usuario.BloqueadoHasta.HasValue && usuario.BloqueadoHasta > DateTime.UtcNow)
-        {
-            await RegistrarLogAsync(usuario.Id, usuario.Username, false,
-                ipAddress, plataforma, $"Cuenta bloqueada hasta {usuario.BloqueadoHasta:HH:mm}");
-            return null;
-        }
-
-        // --- Login exitoso ---
-        usuario.IntentosFallidos = 0;
-        usuario.BloqueadoHasta = null;
-        usuario.UltimoAcceso = DateTime.UtcNow;
-
-        // 3. Obtener Roles y generar tokens usando TU tokenService
-        var roles = usuario.Roles.Select(ur => ur.Rol.Nombre).ToList();
-        var accessToken = tokenService.GenerarAccessToken(usuario.Id, usuario.Username, roles);
-        var expira = tokenService.ObtenerExpiracionAccessToken();
-        var refreshTokenStr = tokenService.GenerarRefreshToken();
-
-        // 4. Guardar el Refresh Token en la BD
-        db.RefreshTokens.Add(new RefreshToken
-        {
-            UsuarioId = usuario.Id,
-            Token = refreshTokenStr,
-            FechaExpiracion = DateTime.UtcNow.AddDays(30),
-            IpCreacion = ipAddress,
-            DispositivoInfo = "Autenticación por QR"
+            Detalle = detalle,
+            Fecha = DateTime.UtcNow
         });
 
-        await db.SaveChangesAsync(ct);
-
-        // 5. Registrar el log de éxito
-        await RegistrarLogAsync(usuario.Id, usuario.Username, true,
-            ipAddress, plataforma, "Login QR exitoso");
-
-        // 6. Resolver proyectos usando TU permisosService (Esto evita el 403 en la app)
-        var proyectos = await permisosService.ResolverPermisosEfectivosAsync(usuario.Id);
-
-        // 7. Retornar la respuesta usando el constructor exacto de tu DTO
-        return new LoginResponse(
-            accessToken, refreshTokenStr, expira,
-            usuario.NombreCompleto, usuario.Username,
-            roles, proyectos);
+        // El log se guarda junto al SaveChangesAsync del flujo principal.
+        // En fallos previos al SaveChanges (ej. contraseña incorrecta),
+        // se hace SaveChangesAsync explícito dentro de ValidarCredencialesAsync.
     }
 
-    public async Task<IEnumerable<ProyectoPermitidoDto>> DescubrirProyectosAsync(string identificador, CancellationToken ct = default)
-    {
-        if (string.IsNullOrWhiteSpace(identificador))
-            return Enumerable.Empty<ProyectoPermitidoDto>();
-
-        // 1. Buscamos al usuario por Username o Email (solo usuarios activos)
-        var usuario = await db.Usuarios
-            .AsNoTracking()
-            .FirstOrDefaultAsync(u =>
-                (u.Username == identificador || u.Email == identificador) && u.Activo, ct);
-
-        // 2. Por seguridad, si no existe o está inactivo, devolvemos una lista vacía 
-        // (así no damos pistas a atacantes sobre qué usuarios existen y cuáles no)
-        if (usuario is null)
-            return Enumerable.Empty<ProyectoPermitidoDto>();
-
-        // 3. Reutilizamos tu excelente servicio de permisos para obtener la lista final
-        return await permisosService.ResolverPermisosEfectivosAsync(usuario.Id);
-    }
+    private static UsuarioTokenDto MapUsuarioToken(Usuario u) => new(
+        Id: u.Id,
+        NombreCompleto: u.NombreCompleto,
+        Username: u.Username,
+        Email: u.Email,
+        RolSA: u.RolSA?.Nombre
+    );
 }

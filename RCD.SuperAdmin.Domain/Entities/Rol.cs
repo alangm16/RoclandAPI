@@ -1,13 +1,13 @@
-﻿
-namespace RCD.SuperAdmin.Domain.Entities
-{
-    public class Rol
-    {
-        public int Id { get; set; }
-        public string Nombre { get; set; } = string.Empty;
-        public bool Activo { get; set; } = true;
+﻿namespace RCD.SuperAdmin.Domain.Entities;
 
-        public ICollection<UsuarioRol> Usuarios { get; set; } = [];
-        public ICollection<PermisoRol> Permisos { get; set; } = [];
-    }
+public class Rol
+{
+    public int Id { get; set; }
+    public int ProyectoId { get; set; }
+    public string Nombre { get; set; } = null!;
+    public int Nivel { get; set; } = 99;
+    public string? Descripcion { get; set; }
+    public bool Activo { get; set; } = true;
+    public Proyecto Proyecto { get; set; } = null!;
+    public ICollection<ProyectoUsuarioRol> UsuariosAsignados { get; set; } = [];
 }

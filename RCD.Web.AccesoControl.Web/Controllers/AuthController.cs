@@ -1,45 +1,55 @@
-﻿//using Microsoft.AspNetCore.Authorization;
-//using Microsoft.AspNetCore.Mvc;
-//using RCD.Web.AccesoControl.Application.Interfaces;
-//using System.Security.Claims;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using RCD.AccesoControlWeb.Application.DTOs;
+using RCD.Web.AccesoControl.Application.Interfaces;
+using System.Security.Claims;
 
-//namespace RCD.Web.AccesoControl.Web.Controllers;
+namespace RCD.Web.AccesoControl.Web.Controllers;
 
-//[ApiController]
-//[Route("api/web/accesocontrol/[controller]")]
-//[ApiExplorerSettings(GroupName = "web-accesocontrol")]
-//[Authorize] // ── FIX: Ahora requiere el token generado por SuperAdmin
-//public class AuthController : ControllerBase
-//{
-//    private readonly IAuthService _auth;
+[ApiController]
+[Route("api/web/accesocontrol/[controller]")]
+[ApiExplorerSettings(GroupName = "web-accesocontrol")]
+public class AuthController : ControllerBase
+{
+    private readonly IAuthService _auth;
 
-//    public AuthController(IAuthService auth)
-//    {
-//        _auth = auth;
-//    }
+    public AuthController(IAuthService auth)
+    {
+        _auth = auth;
+    }
 
-//    /// <summary>
-//    /// Este endpoint reemplaza a los antiguos LoginGuardia y LoginAdmin.
-//    /// Valida si el usuario autenticado en SuperAdmin tiene un perfil en Acceso Control.
-//    /// </summary>
-//    [HttpGet("mi-perfil")]
-//    public async Task<IActionResult> ObtenerMiPerfil()
-//    {
-//        // 1. Extraer el ID del usuario de los Claims del Token JWT
-//        var superAdminIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
-//                              ?? User.FindFirst("id")?.Value;
+    /// <summary>
+    /// Obtiene el perfil del usuario autenticado (vía JWT de SuperAdmin).
+    /// Se completa con el rol y nivel de rol extraídos del mismo token.
+    /// </summary>
+    [HttpGet("mi-perfil")]
+    [Authorize] // Basta con que el token sea válido para el proyecto "acceso-control"
+    public async Task<IActionResult> ObtenerMiPerfil()
+    {
+        // 1. Extraer el ID del usuario del claim 'sub' (NameIdentifier)
+        var subClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrEmpty(subClaim) || !int.TryParse(subClaim, out int superAdminId))
+            return Unauthorized(new { mensaje = "Token inválido o sin identificador de usuario." });
 
-//        if (!int.TryParse(superAdminIdStr, out int superAdminId))
-//            return Unauthorized(new { mensaje = "El token no contiene un ID de usuario válido." });
+        // 2. Buscar el perfil local en Acceso Control
+        var perfil = await _auth.ObtenerPerfilContextoAsync(superAdminId);
+        if (perfil is null)
+            return StatusCode(403, new { mensaje = "No tienes un perfil activo en el módulo de Acceso Control." });
 
-//        // 2. Consultar el Perfil en la tabla unificada (Perfiles)
-//        var perfil = await _auth.ObtenerPerfilPorSuperAdminIdAsync(superAdminId);
+        // 3. Tomar el rol del token JWT (ya viene validado por SuperAdmin)
+        var nombreRol = User.FindFirst("nombreRol")?.Value ?? string.Empty;
+        var nivelRolStr = User.FindFirst("nivelRol")?.Value ?? "0";
+        int.TryParse(nivelRolStr, out int nivelRol);
 
-//        if (perfil == null || !perfil.Activo)
-//            return StatusCode(403, new { mensaje = "No tienes un perfil configurado o activo en el módulo de Acceso Control." });
-
-//        return Ok(perfil);
-//    }
-
-//    // Se eliminó GenerarHash porque la gestión de contraseñas ahora es responsabilidad de SuperAdmin.
-//}
+        // 4. Retornar el DTO con todos los datos
+        return Ok(new PerfilContextoDto(
+            PerfilId: perfil.PerfilId,
+            SuperAdminUsuarioId: perfil.SuperAdminUsuarioId,
+            NombreCompleto: perfil.NombreCompleto,
+            NombreRol: nombreRol,
+            NivelRol: nivelRol,
+            Turno: perfil.Turno,
+            NumeroEmpleado: perfil.NumeroEmpleado
+        ));
+    }
+}

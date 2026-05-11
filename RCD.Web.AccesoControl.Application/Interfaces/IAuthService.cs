@@ -1,4 +1,4 @@
-﻿using RCD.AccesoControlWeb.Application.DTOs;
+﻿using RCD.Web.AccesoControl.Application.DTOs;
 
 public interface IAuthService
 {

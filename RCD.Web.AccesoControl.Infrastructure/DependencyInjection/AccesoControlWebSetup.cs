@@ -13,9 +13,8 @@ namespace RCD.Web.AccesoControl.Infrastructure
         public static IServiceCollection AddAccesoControlWebModule(this IServiceCollection services, IConfiguration configuration)
         {
             // 1. Base de Datos específica del módulo
-            services.AddDbContextPool<AccesoControlWebDbContext>(options =>
-                options.UseSqlServer(configuration.GetConnectionString("AccesoControlDb")),
-                poolSize: 128);
+            services.AddDbContext<AccesoControlWebDbContext>(options =>
+                options.UseSqlServer(configuration.GetConnectionString("AccesoControlDb")));
 
             // 2. Mapeo de configuraciones del módulo
             // Esto permite inyectar IOptions<AccesoControlConfig> en tus servicios

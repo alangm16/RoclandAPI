@@ -10,14 +10,13 @@ public static class AccesoControlMobileSetup
         this IServiceCollection services,
         IConfiguration configuration)
     {
-        // No registra DbContext ni servicios propios —
-        // los hereda del módulo Web que ya los registró.
-        // Solo registra la policy exclusiva de guardias.
+        // Política exclusiva para app móvil de guardias.
+        // Exige token JWT válido y que el claim "nombreRol" sea "Guardia".
         services.AddAuthorization(options =>
         {
             options.AddPolicy("AccesoControlMobilePolicy", policy =>
                 policy.RequireAuthenticatedUser()
-                      .RequireRole("Guardia")
+                      .RequireClaim("nombreRol", "Guardia")  // desde SA
                       .AddAuthenticationSchemes(JwtBearerDefaults.AuthenticationScheme));
         });
 

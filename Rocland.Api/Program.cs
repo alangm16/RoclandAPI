@@ -425,14 +425,14 @@ using (var scope = app.Services.CreateScope())
         {
             if (scope.ServiceProvider.GetRequiredService(dbContextType) is DbContext dbContext)
             {
-                Log.Information("[Host] 🗄️ Migrando base de datos: {DbContext}", dbContextType.Name);
+                Log.Information("[Host] Migrando base de datos: {DbContext}", dbContextType.Name);
                 dbContext.Database.Migrate();
-                Log.Information("[Host] ✔️ Migración completada: {DbContext}", dbContextType.Name);
+                Log.Information("[Host] Migración completada: {DbContext}", dbContextType.Name);
             }
         }
         catch (Exception ex)
         {
-            Log.Error("[Host] ❌ Error migrando {DbContext}: {Message}", dbContextType.Name, ex.Message);
+            Log.Error("[Host] Error migrando {DbContext}: {Message}", dbContextType.Name, ex.Message);
         }
     }
 }

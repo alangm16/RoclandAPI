@@ -43,7 +43,10 @@ public class SuperAdminDbContext : DbContext
         // ── 1. Usuarios ───────────────────────────────────────────────────────
         modelBuilder.Entity<Usuario>(b =>
         {
-            b.ToTable("TBL_ROCLAND_SUPERADMIN_USUARIOS");
+            b.ToTable("TBL_ROCLAND_SUPERADMIN_USUARIOS", tb =>
+            {
+                tb.HasTrigger("TRG_SUPERADMIN_SYNC_NOMBRECOMPLETO_PERFIL");
+            });
 
             b.HasIndex(u => u.Username).IsUnique();
 

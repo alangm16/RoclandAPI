@@ -1,6 +1,6 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using RCD.AccesoControlWeb.Application.DTOs;
+using RCD.Web.AccesoControl.Application.DTOs;
 using RCD.Web.AccesoControl.Application.Interfaces;
 using System.Security.Claims;
 

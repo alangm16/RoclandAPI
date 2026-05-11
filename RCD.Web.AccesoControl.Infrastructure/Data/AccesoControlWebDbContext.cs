@@ -102,7 +102,11 @@ public class AccesoControlWebDbContext : DbContext
         // ── 7. RegistroVisitantes ─────────────────────────────────────────────
         modelBuilder.Entity<RegistroVisitante>(b =>
         {
-            b.ToTable("TBL_ROCLAND_ACCESOCONTROL_REGISTROVISITANTES");
+            b.ToTable("TBL_ROCLAND_ACCESOCONTROL_REGISTROVISITANTES", tb =>
+            {
+                tb.HasTrigger("TRG_AC_REGISTROVISITANTES_ASIGNAR_GAFETE");
+                tb.HasTrigger("TRG_AC_REGISTROVISITANTES_LIBERAR_GAFETE");
+            });
 
             b.HasIndex(rv => rv.FechaEntrada);
             b.HasIndex(rv => rv.PersonaId);
@@ -154,7 +158,11 @@ public class AccesoControlWebDbContext : DbContext
         // ── 8. RegistroProveedores ────────────────────────────────────────────
         modelBuilder.Entity<RegistroProveedor>(b =>
         {
-            b.ToTable("TBL_ROCLAND_ACCESOCONTROL_REGISTROPROVEEDORES");
+            b.ToTable("TBL_ROCLAND_ACCESOCONTROL_REGISTROPROVEEDORES", tb =>
+            {
+                tb.HasTrigger("TRG_AC_REGISTROPROVEEDORES_ASIGNAR_GAFETE");
+                tb.HasTrigger("TRG_AC_REGISTROPROVEEDORES_LIBERAR_GAFETE");
+            });
 
             b.HasIndex(rp => rp.FechaEntrada);
             b.HasIndex(rp => rp.PersonaId);

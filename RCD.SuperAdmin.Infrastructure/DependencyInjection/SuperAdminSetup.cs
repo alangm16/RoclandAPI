@@ -34,7 +34,9 @@ public static class SuperAdminSetup
         services.AddScoped<IJwtService, JwtService>();
         services.AddScoped<ICurrentUserService, HttpContextCurrentUserService>();
         services.AddScoped<IFcmTokenRepository, SuperAdminFcmTokenRepository>();
+        services.AddScoped<IPerfilFcmTokenProvider, PerfilFcmTokenProvider>();
         services.AddHttpClient<IFcmService, FcmService>();
+
 
         // ── Servicios de Application ──────────────────────────────────────────
         services.AddScoped<IAuthService, AuthService>();

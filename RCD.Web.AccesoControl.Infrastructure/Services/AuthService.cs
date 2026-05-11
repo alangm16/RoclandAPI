@@ -1,5 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using RCD.AccesoControlWeb.Application.DTOs;
+using RCD.Web.AccesoControl.Application.DTOs;
 using RCD.Web.AccesoControl.Infrastructure.Data;
 
 namespace RCD.Web.AccesoControl.Infrastructure.Services

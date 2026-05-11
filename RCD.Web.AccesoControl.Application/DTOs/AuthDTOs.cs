@@ -1,4 +1,4 @@
-﻿namespace RCD.AccesoControlWeb.Application.DTOs;
+﻿namespace RCD.Web.AccesoControl.Application.DTOs;
 
 public record PerfilContextoDto(
     int PerfilId,

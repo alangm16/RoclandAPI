@@ -1,30 +1,36 @@
 ﻿namespace RCD.SuperAdmin.Application.DTOs.Usuarios;
 
-/// <summary>Fila en la tabla de usuarios del panel SA.</summary>
+/// Fila en la tabla de usuarios del panel SA.
 public record UsuarioListDto(
     int Id,
     string NombreCompleto,
     string Username,
     string? Email,
-    string? RolSA,
     bool Activo,
-    DateTime FechaCreacion
+    DateTime FechaCreacion,
+    DateTime? UltimoAcceso,      
+    DateTime? BloqueadoHasta     
 );
 
-/// <summary>Vista completa de un usuario con sus proyectos y accesos.</summary>
+/// Vista completa de un usuario con sus proyectos y accesos.
 public record UsuarioDetalleDto(
     int Id,
     string NombreCompleto,
     string Username,
     string? Email,
     string? QRCode,
-    string? RolSA,
     bool Activo,
-    DateTime UltimoAcceso,
-    IEnumerable<ProyectoAsignadoDto> Proyectos
+    DateTime? UltimoAcceso,
+    IEnumerable<ProyectoAsignadoDto> Proyectos,
+    int IntentosFallidos,        
+    DateTime? BloqueadoHasta,    
+    string? CreadoPor,           
+    DateTime FechaCreacion,      
+    string? ModificadoPor,       
+    DateTime? FechaModificacion  
 );
 
-/// <summary>Resumen del acceso de un usuario a un proyecto.</summary>
+/// Resumen del acceso de un usuario a un proyecto.
 public record ProyectoAsignadoDto(
     int ProyectoId,
     string CodigoProyecto,
@@ -38,14 +44,13 @@ public record CrearUsuarioDto(
     string NombreCompleto,
     string Username,
     string? Email,
-    string Password,
-    int? RolSAId    // null = sin acceso al panel SA
+    string Password
 );
 
 public record ActualizarUsuarioDto(
     string NombreCompleto,
     string? Email,
-    int? RolSAId
+    string? Password
 );
 
 public record AsignarProyectoRolDto(

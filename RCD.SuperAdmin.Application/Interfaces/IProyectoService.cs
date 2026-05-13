@@ -15,4 +15,5 @@ public interface IProyectoService
     Task<IEnumerable<VistaDto>> ObtenerVistasAsync(int proyectoId);
     Task<VistaDto> CrearVistaAsync(int proyectoId, CrearVistaDto dto);
     Task EliminarVistaAsync(int proyectoId, int vistaId);
+    Task<ProyectoDetalleDto?> ObtenerPorCodigoAsync(string codigo);
 }

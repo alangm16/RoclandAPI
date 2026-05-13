@@ -36,15 +36,14 @@ public class JwtService(IOptions<JwtSettings> options) : IJwtService
     public string GenerarTokenMaestro(TokenMaestroClaimsDto claims)
     {
         var claimsList = new List<Claim>
-        {
-            new(JwtRegisteredClaimNames.Sub,    claims.UsuarioId.ToString()),
-            new(JwtRegisteredClaimNames.UniqueName, claims.Username),
-            new("esMaestro",  "true"),
-            new("rolSA",      claims.RolSA),
-            new(ClaimTypes.Role, claims.RolSA),
-            new("nivelSA",    claims.NivelSA.ToString()),
-            new("plataforma", claims.Plataforma),
-        };
+    {
+        new(JwtRegisteredClaimNames.Sub, claims.UsuarioId.ToString()),
+        new(JwtRegisteredClaimNames.UniqueName, claims.Username),
+        new("esMaestro", "true"),
+        new(ClaimTypes.Role, claims.Rol),          // ← rol del proyecto super-admin
+        new("nivel", claims.Nivel.ToString()),     // ← nivel del rol
+        new("plataforma", claims.Plataforma),
+    };
 
         return GenerarToken(claimsList, _cfg.MaestroExpirationMinutes);
     }
@@ -69,7 +68,7 @@ public class JwtService(IOptions<JwtSettings> options) : IJwtService
             ValidateAudience = true,
             ValidAudience = _cfg.Audience,
             ValidateLifetime = true,
-            ClockSkew = TimeSpan.Zero   // sin margen de gracia
+            ClockSkew = TimeSpan.Zero
         };
 
         var principal = handler.ValidateToken(token, parameters, out _);
@@ -80,9 +79,8 @@ public class JwtService(IOptions<JwtSettings> options) : IJwtService
             EsMaestro: principal.FindFirstValue("esMaestro") == "true",
             ProyectoId: TryParseInt(principal.FindFirstValue("proyectoId")),
             CodigoProyecto: principal.FindFirstValue("codigoProyecto"),
-            NombreRol: principal.FindFirstValue("nombreRol"),
-            NivelRol: TryParseInt(principal.FindFirstValue("nivelRol")),
-            RolSA: principal.FindFirstValue("rolSA"),
+            NombreRol: principal.FindFirstValue(ClaimTypes.Role),           // ← rol general
+            NivelRol: TryParseInt(principal.FindFirstValue("nivel")),       // ← nivel general
             Plataforma: principal.FindFirstValue("plataforma") ?? "Web"
         );
     }

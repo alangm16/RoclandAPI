@@ -19,7 +19,6 @@ public class AuthService(
     {
         // 1. Buscar usuario activo
         var usuario = await db.Usuarios
-            .Include(u => u.RolSA)
             .FirstOrDefaultAsync(u => u.Username == dto.Username && u.Activo);
 
         // 2. Validar existencia + bloqueo + contraseña
@@ -76,36 +75,48 @@ public class AuthService(
 
     public async Task<AuthMaestroResultDto> LoginMaestroAsync(LoginMaestroDto dto)
     {
-        // 1. Buscar usuario activo con su rol SA
+        // 1. Buscar usuario activo (sin RolSA)
         var usuario = await db.Usuarios
-            .Include(u => u.RolSA)
             .FirstOrDefaultAsync(u => u.Username == dto.Username && u.Activo);
 
         // 2. Validar credenciales (sin proyecto específico)
         await ValidarCredencialesAsync(usuario, dto.Password, proyectoCodigo: null);
 
-        // 3. El usuario debe tener al menos RolSA para acceder al panel
-        if (usuario!.RolSAId is null)
-            throw new UnauthorizedAccessException(
-                "El usuario no tiene acceso al panel SuperAdmin.");
+        // 3. Obtener proyecto 'super-admin'
+        var proyectoSA = await db.Proyectos
+            .FirstOrDefaultAsync(p => p.Codigo == "super-admin" && p.Activo);
+        if (proyectoSA == null)
+            throw new Exception("Proyecto super-admin no está configurado.");
 
-        // 4. Obtener todos los proyectos a los que tiene acceso
+        // 4. Obtener la asignación activa del usuario al proyecto super-admin
+        var asignacionSA = await db.ProyectoUsuarioRoles
+            .Include(pur => pur.Rol)
+            .FirstOrDefaultAsync(pur =>
+                pur.UsuarioId == usuario.Id &&
+                pur.ProyectoId == proyectoSA.Id &&
+                pur.Activo);
+
+        if (asignacionSA == null)
+            throw new UnauthorizedAccessException("El usuario no tiene acceso al panel SuperAdmin.");
+
+        // 5. Obtener todos los demás proyectos a los que tiene acceso (opcional)
         var proyectos = await db.ProyectoUsuarioRoles
             .Include(pur => pur.Proyecto)
             .Include(pur => pur.Rol)
             .Where(pur =>
                 pur.UsuarioId == usuario.Id &&
-                pur.Activo == true &&
-                pur.Proyecto.Activo == true)
+                pur.Activo &&
+                pur.Proyecto.Activo &&
+                pur.ProyectoId != proyectoSA.Id) // excluir super-admin si no quieres duplicado
             .OrderBy(pur => pur.Proyecto.Orden)
             .ToListAsync();
 
-        // 5. Generar token maestro
+        // 6. Generar token maestro con el rol obtenido del proyecto super-admin
         var tokenClaims = new TokenMaestroClaimsDto(
             UsuarioId: usuario.Id,
             Username: usuario.Username,
-            RolSA: usuario.RolSA!.Nombre,
-            NivelSA: usuario.RolSA!.Nivel,
+            Rol: asignacionSA.Rol.Nombre,      // ← ahora Rol
+            Nivel: asignacionSA.Rol.Nivel,     // ← ahora Nivel
             Plataforma: dto.Plataforma
         );
 
@@ -113,18 +124,18 @@ public class AuthService(
         var refreshToken = jwtService.GenerarRefreshToken();
         var expiracion = DateTime.UtcNow.AddMinutes(_jwt.MaestroExpirationMinutes);
 
-        // 6. Persistir RefreshToken (proyectoId = null → sesión del panel SA)
-        await GuardarRefreshTokenAsync(
-            usuario.Id, proyectoId: null, dto.Plataforma, refreshToken);
+        // 7. Persistir RefreshToken (proyectoId = null → sesión del panel SA)
+        await GuardarRefreshTokenAsync(usuario.Id, null, dto.Plataforma, refreshToken);
 
-        // 7. Registrar acceso exitoso
-        await RegistrarAccesoExitosoAsync(usuario, proyectoCodigo: null, dto.Plataforma);
+        // 8. Registrar acceso exitoso
+        await RegistrarAccesoExitosoAsync(usuario, null, dto.Plataforma);
 
+        // 9. Mapear usuario (sin RolSA)
         return new AuthMaestroResultDto(
             AccessToken: accessToken,
             RefreshToken: refreshToken,
             Expiracion: expiracion,
-            Usuario: MapUsuarioToken(usuario),
+            Usuario: MapUsuarioToken(usuario),   // Este método ya no debe incluir RolSA
             ProyectosAccesibles: proyectos.Select(pur => new ProyectoAccesoDto(
                 Id: pur.ProyectoId,
                 Codigo: pur.Proyecto.Codigo,
@@ -140,10 +151,9 @@ public class AuthService(
 
     public async Task<AuthResultDto> RefrescarTokenAsync(RefreshTokenDto dto)
     {
-        // 1. Buscar el RefreshToken vigente
+        // 1. Buscar el RefreshToken vigente (sin incluir RolSA)
         var stored = await db.RefreshTokens
             .Include(rt => rt.Usuario)
-                .ThenInclude(u => u.RolSA)
             .Include(rt => rt.Proyecto)
             .FirstOrDefaultAsync(rt =>
                 rt.Token == dto.RefreshToken &&
@@ -157,21 +167,20 @@ public class AuthService(
             throw new UnauthorizedAccessException("RefreshToken expirado.");
 
         var usuario = stored.Usuario;
-
         if (!usuario.Activo)
             throw new UnauthorizedAccessException("El usuario está inactivo.");
 
-        // 2. Revocar el token usado (rotación)
+        // 2. Revocar el token usado
         stored.Revocado = true;
         db.RefreshTokens.Update(stored);
 
         // 3. Generar nuevos tokens
         string accessToken;
-        var expiracion = DateTime.UtcNow.AddMinutes(_jwt.ExpirationMinutes);
+        DateTime expiracion;
 
         if (stored.ProyectoId is not null)
         {
-            // Refresh de token directo — recuperar asignación vigente
+            // Refresh de token directo (proyecto específico)
             var asignacion = await db.ProyectoUsuarioRoles
                 .Include(pur => pur.Rol)
                 .FirstOrDefaultAsync(pur =>
@@ -183,6 +192,7 @@ public class AuthService(
                 throw new UnauthorizedAccessException(
                     "El usuario ya no tiene acceso al proyecto.");
 
+            expiracion = DateTime.UtcNow.AddMinutes(_jwt.ExpirationMinutes);
             accessToken = jwtService.GenerarTokenDirecto(new TokenDirectoClaimsDto(
                 UsuarioId: usuario.Id,
                 Username: usuario.Username,
@@ -196,26 +206,36 @@ public class AuthService(
         }
         else
         {
-            // Refresh de token maestro
-            if (usuario.RolSAId is null)
+            // Refresh de token maestro → obtener rol desde proyecto super-admin
+            var proyectoSA = await db.Proyectos
+                .FirstOrDefaultAsync(p => p.Codigo == "super-admin" && p.Activo);
+            if (proyectoSA == null)
+                throw new Exception("Proyecto super-admin no está configurado.");
+
+            var asignacionSA = await db.ProyectoUsuarioRoles
+                .Include(pur => pur.Rol)
+                .FirstOrDefaultAsync(pur =>
+                    pur.UsuarioId == usuario.Id &&
+                    pur.ProyectoId == proyectoSA.Id &&
+                    pur.Activo);
+
+            if (asignacionSA == null)
                 throw new UnauthorizedAccessException(
                     "El usuario ya no tiene acceso al panel SuperAdmin.");
 
             expiracion = DateTime.UtcNow.AddMinutes(_jwt.MaestroExpirationMinutes);
-
             accessToken = jwtService.GenerarTokenMaestro(new TokenMaestroClaimsDto(
                 UsuarioId: usuario.Id,
                 Username: usuario.Username,
-                RolSA: usuario.RolSA!.Nombre,
-                NivelSA: usuario.RolSA!.Nivel,
+                Rol: asignacionSA.Rol.Nombre,
+                Nivel: asignacionSA.Rol.Nivel,
                 Plataforma: dto.Plataforma
             ));
         }
 
-        // 4. Persistir nuevo RefreshToken (rotación completa)
+        // 4. Generar nuevo RefreshToken
         var nuevoRefresh = jwtService.GenerarRefreshToken();
-        await GuardarRefreshTokenAsync(
-            usuario.Id, stored.ProyectoId, dto.Plataforma, nuevoRefresh);
+        await GuardarRefreshTokenAsync(usuario.Id, stored.ProyectoId, dto.Plataforma, nuevoRefresh);
 
         await db.SaveChangesAsync();
 
@@ -223,7 +243,7 @@ public class AuthService(
             AccessToken: accessToken,
             RefreshToken: nuevoRefresh,
             Expiracion: expiracion,
-            Usuario: MapUsuarioToken(usuario)
+            Usuario: MapUsuarioToken(usuario)   // sin RolSA
         );
     }
 
@@ -380,7 +400,35 @@ public class AuthService(
         Id: u.Id,
         NombreCompleto: u.NombreCompleto,
         Username: u.Username,
-        Email: u.Email,
-        RolSA: u.RolSA?.Nombre
+        Email: u.Email
     );
+
+    public async Task<IEnumerable<ProyectoAccesoDto>> DescubrirProyectosAsync(string username)
+    {
+        var usuario = await db.Usuarios
+            .FirstOrDefaultAsync(u => u.Username == username && u.Activo);
+
+        if (usuario is null)
+            return Array.Empty<ProyectoAccesoDto>();
+
+        return await db.ProyectoUsuarioRoles
+            .Include(pur => pur.Proyecto)
+            .Include(pur => pur.Rol)
+            .Where(pur =>
+                pur.UsuarioId == usuario.Id &&
+                pur.Activo &&
+                pur.Proyecto.Activo)
+            .OrderBy(pur => pur.Proyecto.Orden)
+            .Select(pur => new ProyectoAccesoDto(
+                pur.Proyecto.Id,
+                pur.Proyecto.Codigo,
+                pur.Proyecto.Nombre,
+                pur.Proyecto.Plataforma,
+                pur.Proyecto.IconoCss,
+                pur.Proyecto.UrlBase,
+                pur.Rol.Nombre,
+                pur.Rol.Nivel
+            ))
+            .ToListAsync();
+    }
 }

@@ -24,4 +24,6 @@ public interface IAuthService
 
     /// Revoca todos los RefreshTokens activos del usuario en la plataforma indicada.
     Task LogoutAsync(int usuarioId, string plataforma, int? proyectoId);
+
+    Task<IEnumerable<ProyectoAccesoDto>> DescubrirProyectosAsync(string username);
 }

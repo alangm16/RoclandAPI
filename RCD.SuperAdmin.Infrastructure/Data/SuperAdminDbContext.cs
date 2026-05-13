@@ -28,12 +28,13 @@ public class SuperAdminDbContext : DbContext
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     public DbSet<LogAcceso> LogsAcceso => Set<LogAcceso>();
     public DbSet<Alerta> Alertas => Set<Alerta>();
+    public DbSet<ConfiguracionSistema> Configuraciones => Set<ConfiguracionSistema>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
 
-        // ── 0. RolSA ─────────────────────────────────────────────────────────
+        // ── 0. RolSA ──────────────────────────────────────────────────────────
         modelBuilder.Entity<RolSA>(b =>
         {
             b.ToTable("TBL_ROCLAND_SUPERADMIN_ROLES_SA");
@@ -55,14 +56,7 @@ public class SuperAdminDbContext : DbContext
              .IsUnique()
              .HasFilter("[QRCode] IS NOT NULL");
 
-            // Rol interno del panel SA (nullable → sin acceso al panel)
-            b.HasOne(u => u.RolSA)
-             .WithMany(r => r.Usuarios)
-             .HasForeignKey(u => u.RolSAId)
-             .OnDelete(DeleteBehavior.Restrict);
-
             // CreadoPor / ModificadoPor: FK auto-referencial diferida
-            // (permite el seed del primer usuario sin circular dependency)
             b.HasOne<Usuario>()
              .WithMany()
              .HasForeignKey(u => u.CreadoPor)
@@ -81,9 +75,7 @@ public class SuperAdminDbContext : DbContext
 
             b.HasIndex(p => p.Codigo).IsUnique();
 
-            b.Property(p => p.Plataforma)
-             .HasMaxLength(30);
-
+            b.Property(p => p.Plataforma).HasMaxLength(30);
             b.Property(p => p.Estado)
              .HasMaxLength(20)
              .HasDefaultValue("Produccion");
@@ -104,7 +96,6 @@ public class SuperAdminDbContext : DbContext
         {
             b.ToTable("TBL_ROCLAND_SUPERADMIN_ROLES");
 
-            // Un mismo nombre de rol no puede repetirse dentro del mismo proyecto
             b.HasIndex(r => new { r.ProyectoId, r.Nombre }).IsUnique();
 
             b.HasOne(r => r.Proyecto)
@@ -113,17 +104,32 @@ public class SuperAdminDbContext : DbContext
              .OnDelete(DeleteBehavior.Cascade);
         });
 
-        // ── 4. Vistas (módulos/páginas) ───────────────────────────────────────
+        // ── 4. Vistas (módulos/páginas con jerarquía padre→hijo) ─────────────
         modelBuilder.Entity<Vista>(b =>
         {
             b.ToTable("TBL_ROCLAND_SUPERADMIN_VISTAS");
 
+            // Código único dentro del proyecto
             b.HasIndex(v => new { v.ProyectoId, v.Codigo }).IsUnique();
 
+            // Relación con el proyecto
             b.HasOne(v => v.Proyecto)
              .WithMany(p => p.Vistas)
              .HasForeignKey(v => v.ProyectoId)
              .OnDelete(DeleteBehavior.Cascade);
+
+            // ── Auto-relación: padre → hijos ─────────────────────────────────
+            // VistaPadreId NULL = raíz; con valor = es hijo de esa vista.
+            // NoAction en delete porque si se borra un padre, los hijos
+            // deben tratarse manualmente (evita delete en cascada accidental).
+            b.HasOne(v => v.VistaPadre)
+             .WithMany(v => v.Hijos)
+             .HasForeignKey(v => v.VistaPadreId)
+             .IsRequired(false)
+             .OnDelete(DeleteBehavior.NoAction);
+
+            b.Property(v => v.EsContenedor)
+             .HasDefaultValue(false);
         });
 
         // ── 5. ProyectoUsuarioRol (tabla puente central) ──────────────────────
@@ -179,6 +185,7 @@ public class SuperAdminDbContext : DbContext
              .HasForeignKey(uva => uva.ProyectoId)
              .OnDelete(DeleteBehavior.NoAction);
 
+            // Restrict en lugar de Cascade para evitar conflicto con la FK de Proyecto
             b.HasOne(uva => uva.Vista)
              .WithMany(v => v.AccesosUsuario)
              .HasForeignKey(uva => uva.VistaId)
@@ -200,9 +207,7 @@ public class SuperAdminDbContext : DbContext
         {
             b.ToTable("TBL_ROCLAND_SUPERADMIN_TOKENS_DISPOSITIVO");
 
-            // Un solo token por usuario + proyecto + plataforma
             b.HasIndex(td => new { td.UsuarioId, td.ProyectoId, td.Plataforma }).IsUnique();
-
             b.Property(td => td.Plataforma).HasMaxLength(20);
 
             b.HasOne(td => td.Usuario)
@@ -222,7 +227,6 @@ public class SuperAdminDbContext : DbContext
             b.ToTable("TBL_ROCLAND_SUPERADMIN_REFRESH_TOKENS");
 
             b.HasIndex(rt => rt.Token).IsUnique();
-
             b.Property(rt => rt.Plataforma)
              .HasMaxLength(20)
              .HasDefaultValue("Web");
@@ -232,7 +236,6 @@ public class SuperAdminDbContext : DbContext
              .HasForeignKey(rt => rt.UsuarioId)
              .OnDelete(DeleteBehavior.Cascade);
 
-            // ProyectoId nullable: NULL = sesión del panel SA
             b.HasOne(rt => rt.Proyecto)
              .WithMany(p => p.RefreshTokens)
              .HasForeignKey(rt => rt.ProyectoId)
@@ -245,7 +248,6 @@ public class SuperAdminDbContext : DbContext
         {
             b.ToTable("TBL_ROCLAND_SUPERADMIN_LOGS_ACCESO");
 
-            // UsuarioId nullable: puede no existir si el username no fue encontrado
             b.HasOne(la => la.Usuario)
              .WithMany(u => u.LogsAcceso)
              .HasForeignKey(la => la.UsuarioId)
@@ -266,12 +268,19 @@ public class SuperAdminDbContext : DbContext
 
             b.Property(a => a.Tipo).HasMaxLength(20);
 
-            // ProyectoId nullable: NULL = alerta global del SA
             b.HasOne(a => a.Proyecto)
              .WithMany(p => p.Alertas)
              .HasForeignKey(a => a.ProyectoId)
              .IsRequired(false)
              .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        // ── 11. ConfiguracionSistema ─────────────────────────────────────────
+        modelBuilder.Entity<ConfiguracionSistema>(b =>
+        {
+            b.ToTable("TBL_ROCLAND_SUPERADMIN_CONFIGURACION");
+            b.HasKey(c => c.Id);
+            b.Property(c => c.Id).ValueGeneratedNever(); // siempre 1
         });
     }
 
@@ -296,7 +305,7 @@ public class SuperAdminDbContext : DbContext
                     break;
 
                 case EntityState.Deleted:
-                    // Borra físico → convertido a borrado LÓGICO
+                    // Borrado físico → convertido a borrado LÓGICO
                     entry.State = EntityState.Modified;
                     entry.Entity.Activo = false;
                     entry.Entity.FechaModificacion = DateTime.UtcNow;

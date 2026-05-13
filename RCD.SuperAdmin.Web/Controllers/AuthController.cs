@@ -81,4 +81,15 @@ public class AuthController(
 
         return NoContent(); // 204: Todo salió bien, no hay contenido que devolver
     }
+
+    [HttpGet("proyectos")]
+    [AllowAnonymous]
+    public async Task<IActionResult> DescubrirProyectos([FromQuery] string username)
+    {
+        if (string.IsNullOrWhiteSpace(username) || username.Length < 3)
+            return Ok(Array.Empty<ProyectoAccesoDto>());
+
+        var proyectos = await authService.DescubrirProyectosAsync(username);
+        return Ok(proyectos);
+    }
 }

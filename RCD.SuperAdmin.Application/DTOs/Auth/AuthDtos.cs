@@ -46,8 +46,7 @@ public record UsuarioTokenDto(
     int Id,
     string NombreCompleto,
     string Username,
-    string? Email,
-    string? RolSA    // rol interno del panel (SuperAdmin | Admin | Auditor | null)
+    string? Email
 );
 
 /// Proyecto al que el usuario tiene acceso (usado en el flujo maestro).
@@ -79,12 +78,11 @@ public record TokenDirectoClaimsDto(
     string Plataforma
 );
 
-/// <summary>Claims para generar un JWT maestro del panel SA.</summary>
 public record TokenMaestroClaimsDto(
     int UsuarioId,
     string Username,
-    string RolSA,   // SuperAdmin | Admin | Auditor
-    int NivelSA,
+    string Rol,       // ← antes RolSA
+    int Nivel,        // ← antes NivelSA
     string Plataforma
 );
 
@@ -95,8 +93,7 @@ public record TokenClaimsDto(
     bool EsMaestro,
     int? ProyectoId,
     string? CodigoProyecto,
-    string? NombreRol,
-    int? NivelRol,
-    string? RolSA,
+    string? NombreRol,   // ← antes NombreRol (igual) y eliminamos RolSA
+    int? NivelRol,       // ← unificado (antes NivelRol para proyectos, ahora también para maestro)
     string Plataforma
 );

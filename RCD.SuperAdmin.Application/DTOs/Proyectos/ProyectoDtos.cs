@@ -50,7 +50,10 @@ public record VistaDto(
     string? Icono,
     string? Descripcion,
     int Orden,
-    bool Activo
+    bool Activo,
+    // ── Campos de jerarquía ──────────────────────────────────────────
+    int? VistaPadreId,
+    bool EsContenedor
 );
 
 public record CrearVistaDto(
@@ -59,6 +62,8 @@ public record CrearVistaDto(
     string Ruta,
     string? Icono,
     string? Descripcion,
+    int? VistaPadreId = null,   
+    bool EsContenedor = false,  
     int Orden = 0
 );
 

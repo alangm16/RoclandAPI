@@ -152,21 +152,37 @@ builder.Services
 
         options.Events = new JwtBearerEvents
         {
+            // Extrae el token del query string para conexiones WebSocket/SSE de SignalR
             OnMessageReceived = context =>
             {
                 var accessToken = context.Request.Query["access_token"];
                 var path = context.HttpContext.Request.Path;
-
                 if (!string.IsNullOrEmpty(accessToken) &&
                     path.Value?.Contains("accesohub", StringComparison.OrdinalIgnoreCase) == true)
                 {
                     context.Token = accessToken;
                 }
-
+                return Task.CompletedTask;
+            },
+            OnAuthenticationFailed = context =>
+            {
+                
+                return Task.CompletedTask;
+            },
+            OnTokenValidated = context =>
+            {
+                
+                return Task.CompletedTask;
+            },
+            OnChallenge = context =>
+            {
+                
                 return Task.CompletedTask;
             }
         };
     });
+
+builder.Services.AddHttpContextAccessor();
 
 builder.Services.AddAuthorization(options =>
 {
@@ -175,7 +191,7 @@ builder.Services.AddAuthorization(options =>
     // policy.RequireClaim("ProyectosAsignados", "AccesoControlWeb");
     options.AddPolicy("AccesoControlWebPolicy", policy =>
     policy.RequireAuthenticatedUser()
-          .RequireRole("Admin", "Supervisor")
+          .RequireRole("SuperAdmin", "Gerente", "Supervisor")
           .AddAuthenticationSchemes(JwtBearerDefaults.AuthenticationScheme));
 
     options.AddPolicy("AccesoControlMobilePolicy", policy =>
@@ -346,6 +362,12 @@ builder.Services.AddMediatR(cfg =>
 // ─────────────────────────────────────────────────────────────────────────────
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
+
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.Converters.Add(new UtcDateTimeConverter());
+    });
 
 // ─────────────────────────────────────────────────────────────────────────────
 // PIPELINE DE MIDDLEWARE

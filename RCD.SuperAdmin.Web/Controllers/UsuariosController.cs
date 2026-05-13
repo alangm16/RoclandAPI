@@ -14,9 +14,13 @@ public class UsuariosController(IUsuarioService usuarioService) : ControllerBase
     // ── 1. GESTIÓN BASE DE USUARIOS ─────────────────────────────────────
 
     [HttpGet]
-    public async Task<IActionResult> ObtenerTodos()
+    public async Task<IActionResult> ObtenerTodos(
+    [FromQuery] bool soloPanel = false,
+    [FromQuery] int pagina = 1,
+    [FromQuery] int tamanoPagina = 20,
+    [FromQuery] bool? activo = null)
     {
-        return Ok(await usuarioService.ObtenerTodosAsync());
+        return Ok(await usuarioService.ObtenerTodosAsync(soloPanel, pagina, tamanoPagina, activo));
     }
 
     [HttpGet("{id:int}")]
@@ -64,6 +68,20 @@ public class UsuariosController(IUsuarioService usuarioService) : ControllerBase
         try
         {
             await usuarioService.DesactivarAsync(id);
+            return NoContent();
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { mensaje = ex.Message });
+        }
+    }
+
+    [HttpPut("{id:int}/activar")]
+    public async Task<IActionResult> Activar(int id)
+    {
+        try
+        {
+            await usuarioService.ActivarAsync(id);
             return NoContent();
         }
         catch (KeyNotFoundException ex)
@@ -122,6 +140,20 @@ public class UsuariosController(IUsuarioService usuarioService) : ControllerBase
         catch (InvalidOperationException ex)
         {
             return BadRequest(new { mensaje = ex.Message }); // Ej. Vistas que no son del proyecto
+        }
+    }
+
+    [HttpPut("{id:int}/reset-intentos")]
+    public async Task<IActionResult> ResetearIntentos(int id)
+    {
+        try
+        {
+            await usuarioService.ResetearIntentosAsync(id);
+            return NoContent();
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { mensaje = ex.Message });
         }
     }
 }

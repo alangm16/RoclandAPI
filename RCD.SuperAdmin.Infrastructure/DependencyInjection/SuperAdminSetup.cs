@@ -39,10 +39,20 @@ public static class SuperAdminSetup
 
 
         // ── Servicios de Application ──────────────────────────────────────────
+        services.AddScoped<IAlertaService, AlertaService>();
+        services.AddScoped<IAuditoriaService, AuditoriaService>();
         services.AddScoped<IAuthService, AuthService>();
+        services.AddScoped<IConfiguracionService, ConfiguracionService>();
+        services.AddScoped<IDashboardService, DashboardService>();
+        services.AddScoped<IDelegacionService, DelegacionService>();
+        services.AddScoped<ILogAccesoService, LogAccesoService>();
         services.AddScoped<IMenuService, MenuService>();
-        services.AddScoped<IUsuarioService, UsuarioService>();
         services.AddScoped<IProyectoService, ProyectoService>();
+        services.AddScoped<IRolSAService, RolSAService>();
+        services.AddScoped<ITokenDispositivoService, TokenDispositivoService>();
+        services.AddScoped<IUsuarioService, UsuarioService>();
+        services.AddScoped<IVisibilidadService, VisibilidadService>();
+        services.AddScoped<ISesionService, SesionService>();
 
         return services;
     }

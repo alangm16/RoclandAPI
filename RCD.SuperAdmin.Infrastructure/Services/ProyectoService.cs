@@ -15,22 +15,16 @@ public class ProyectoService : IProyectoService
         _db = db;
     }
 
+    // ── Proyectos ────────────────────────────────────────────────────────────
+
     public async Task<IEnumerable<ProyectoListDto>> ObtenerTodosAsync()
     {
         return await _db.Proyectos
             .OrderBy(p => p.Orden)
             .ThenBy(p => p.Nombre)
             .Select(p => new ProyectoListDto(
-                p.Id,
-                p.Codigo,
-                p.Nombre,
-                p.Plataforma,
-                p.IconoCss,
-                p.Estado,
-                p.Version,
-                p.Orden,
-                p.Activo
-            ))
+                p.Id, p.Codigo, p.Nombre, p.Plataforma,
+                p.IconoCss, p.Estado, p.Version, p.Orden, p.Activo))
             .ToListAsync();
     }
 
@@ -46,14 +40,10 @@ public class ProyectoService : IProyectoService
 
     public async Task<ProyectoDetalleDto> CrearAsync(CrearProyectoDto dto)
     {
-        // Validar código único
         if (await _db.Proyectos.AnyAsync(p => p.Codigo == dto.Codigo))
             throw new InvalidOperationException($"El código '{dto.Codigo}' ya está en uso.");
 
-        // Validar plataforma (el CHECK en BD también lo asegura; validación extra opcional)
-        var plataformasValidas = new[] { "Web", "Desktop", "Mobile", "Web+Mobile", "Web+Desktop", "Todos" };
-        if (!plataformasValidas.Contains(dto.Plataforma))
-            throw new InvalidOperationException($"Plataforma '{dto.Plataforma}' no válida.");
+        ValidarPlataforma(dto.Plataforma);
 
         var proyecto = new Proyecto
         {
@@ -63,7 +53,7 @@ public class ProyectoService : IProyectoService
             IconoCss = dto.IconoCss,
             UrlBase = dto.UrlBase,
             Version = dto.Version ?? "1.0.0",
-            Estado = "Produccion", // los nuevos proyectos arrancan en producción
+            Estado = "Produccion",
             Descripcion = dto.Descripcion,
             Orden = dto.Orden,
             Activo = true
@@ -72,22 +62,11 @@ public class ProyectoService : IProyectoService
         _db.Proyectos.Add(proyecto);
         await _db.SaveChangesAsync();
 
-        // Retornar el detalle recién creado (roles y vistas vacíos)
         return new ProyectoDetalleDto(
-            proyecto.Id,
-            proyecto.Codigo,
-            proyecto.Nombre,
-            proyecto.Plataforma,
-            proyecto.IconoCss,
-            proyecto.UrlBase,
-            proyecto.Estado,
-            proyecto.Version,
-            proyecto.Descripcion,
-            proyecto.Orden,
-            proyecto.Activo,
-            Enumerable.Empty<RolDto>(),
-            Enumerable.Empty<VistaDto>()
-        );
+            proyecto.Id, proyecto.Codigo, proyecto.Nombre, proyecto.Plataforma,
+            proyecto.IconoCss, proyecto.UrlBase, proyecto.Estado, proyecto.Version,
+            proyecto.Descripcion, proyecto.Orden, proyecto.Activo,
+            [], []);
     }
 
     public async Task<ProyectoDetalleDto> ActualizarAsync(int id, ActualizarProyectoDto dto)
@@ -95,15 +74,8 @@ public class ProyectoService : IProyectoService
         var proyecto = await _db.Proyectos.FindAsync(id)
             ?? throw new KeyNotFoundException($"Proyecto con Id {id} no encontrado.");
 
-        // Validar plataforma si se cambia
-        var plataformasValidas = new[] { "Web", "Desktop", "Mobile", "Web+Mobile", "Web+Desktop", "Todos" };
-        if (!plataformasValidas.Contains(dto.Plataforma))
-            throw new InvalidOperationException($"Plataforma '{dto.Plataforma}' no válida.");
-
-        // Validar estado
-        var estadosValidos = new[] { "Produccion", "Mantenimiento", "Desarrollo" };
-        if (!estadosValidos.Contains(dto.Estado))
-            throw new InvalidOperationException($"Estado '{dto.Estado}' no válido.");
+        ValidarPlataforma(dto.Plataforma);
+        ValidarEstado(dto.Estado);
 
         proyecto.Nombre = dto.Nombre;
         proyecto.Plataforma = dto.Plataforma;
@@ -117,7 +89,6 @@ public class ProyectoService : IProyectoService
         _db.Proyectos.Update(proyecto);
         await _db.SaveChangesAsync();
 
-        // Recargar para incluir roles y vistas
         await _db.Entry(proyecto).Collection(p => p.Roles).LoadAsync();
         await _db.Entry(proyecto).Collection(p => p.Vistas).LoadAsync();
 
@@ -135,14 +106,14 @@ public class ProyectoService : IProyectoService
     }
 
     // ── Roles ────────────────────────────────────────────────────────────────
+
     public async Task<IEnumerable<RolDto>> ObtenerRolesAsync(int proyectoId)
     {
         await ValidarProyectoExisteAsync(proyectoId);
 
         return await _db.Roles
             .Where(r => r.ProyectoId == proyectoId && r.Activo)
-            .OrderBy(r => r.Nivel)
-            .ThenBy(r => r.Nombre)
+            .OrderBy(r => r.Nivel).ThenBy(r => r.Nombre)
             .Select(r => new RolDto(r.Id, r.Nombre, r.Nivel, r.Descripcion, r.Activo))
             .ToListAsync();
     }
@@ -151,9 +122,8 @@ public class ProyectoService : IProyectoService
     {
         await ValidarProyectoExisteAsync(proyectoId);
 
-        // Un mismo nombre de rol no puede repetirse dentro del proyecto
         if (await _db.Roles.AnyAsync(r => r.ProyectoId == proyectoId && r.Nombre == dto.Nombre))
-            throw new InvalidOperationException($"Ya existe un rol con el nombre '{dto.Nombre}' en este proyecto.");
+            throw new InvalidOperationException($"Ya existe un rol '{dto.Nombre}' en este proyecto.");
 
         var rol = new Rol
         {
@@ -177,28 +147,28 @@ public class ProyectoService : IProyectoService
         var rol = await _db.Roles.FirstOrDefaultAsync(r => r.Id == rolId && r.ProyectoId == proyectoId)
             ?? throw new KeyNotFoundException("Rol no encontrado en el proyecto.");
 
-        // Verificar si el rol está asignado a algún usuario (ProyectoUsuarioRol activo)
-        var estaAsignado = await _db.ProyectoUsuarioRoles
-            .AnyAsync(pur => pur.RolId == rolId && pur.Activo);
+        if (await _db.ProyectoUsuarioRoles.AnyAsync(pur => pur.RolId == rolId && pur.Activo))
+            throw new InvalidOperationException("No se puede eliminar: hay usuarios asignados a este rol.");
 
-        if (estaAsignado)
-            throw new InvalidOperationException("No se puede eliminar el rol porque hay usuarios asignados a él.");
-
-        // Borrado físico (o lógico según el estándar, pero aquí usamos físico para roles/vistas)
         _db.Roles.Remove(rol);
         await _db.SaveChangesAsync();
     }
 
     // ── Vistas ───────────────────────────────────────────────────────────────
+
     public async Task<IEnumerable<VistaDto>> ObtenerVistasAsync(int proyectoId)
     {
         await ValidarProyectoExisteAsync(proyectoId);
 
         return await _db.Vistas
             .Where(v => v.ProyectoId == proyectoId && v.Activo)
-            .OrderBy(v => v.Orden)
+            .OrderBy(v => v.VistaPadreId)   // raíces primero, luego hijos
+            .ThenBy(v => v.Orden)
             .ThenBy(v => v.Nombre)
-            .Select(v => new VistaDto(v.Id, v.Codigo, v.Nombre, v.Ruta, v.Icono, v.Descripcion, v.Orden, v.Activo))
+            .Select(v => new VistaDto(
+                v.Id, v.Codigo, v.Nombre, v.Ruta, v.Icono,
+                v.Descripcion, v.Orden, v.Activo,
+                v.VistaPadreId, v.EsContenedor))   // ← nuevos campos
             .ToListAsync();
     }
 
@@ -206,9 +176,18 @@ public class ProyectoService : IProyectoService
     {
         await ValidarProyectoExisteAsync(proyectoId);
 
-        // Código único dentro del proyecto
         if (await _db.Vistas.AnyAsync(v => v.ProyectoId == proyectoId && v.Codigo == dto.Codigo))
-            throw new InvalidOperationException($"Ya existe una vista con el código '{dto.Codigo}' en este proyecto.");
+            throw new InvalidOperationException($"Ya existe una vista con el código '{dto.Codigo}'.");
+
+        // Validar que el padre (si se especificó) exista en el mismo proyecto
+        if (dto.VistaPadreId.HasValue)
+        {
+            var padreExiste = await _db.Vistas.AnyAsync(v =>
+                v.Id == dto.VistaPadreId.Value && v.ProyectoId == proyectoId);
+
+            if (!padreExiste)
+                throw new InvalidOperationException("La vista padre especificada no existe en este proyecto.");
+        }
 
         var vista = new Vista
         {
@@ -219,13 +198,18 @@ public class ProyectoService : IProyectoService
             Icono = dto.Icono,
             Descripcion = dto.Descripcion,
             Orden = dto.Orden,
+            VistaPadreId = dto.VistaPadreId,
+            EsContenedor = dto.EsContenedor,
             Activo = true
         };
 
         _db.Vistas.Add(vista);
         await _db.SaveChangesAsync();
 
-        return new VistaDto(vista.Id, vista.Codigo, vista.Nombre, vista.Ruta, vista.Icono, vista.Descripcion, vista.Orden, vista.Activo);
+        return new VistaDto(
+            vista.Id, vista.Codigo, vista.Nombre, vista.Ruta, vista.Icono,
+            vista.Descripcion, vista.Orden, vista.Activo,
+            vista.VistaPadreId, vista.EsContenedor);
     }
 
     public async Task EliminarVistaAsync(int proyectoId, int vistaId)
@@ -235,41 +219,62 @@ public class ProyectoService : IProyectoService
         var vista = await _db.Vistas.FirstOrDefaultAsync(v => v.Id == vistaId && v.ProyectoId == proyectoId)
             ?? throw new KeyNotFoundException("Vista no encontrada en el proyecto.");
 
-        // Verificar que ningún usuario tenga acceso explícito a esta vista
-        var referenciada = await _db.UsuarioVistasAcceso
-                            .AnyAsync(uva => uva.VistaId == vistaId);
+        // No borrar si tiene hijos (FK auto-referencial NoAction)
+        var tieneHijos = await _db.Vistas.AnyAsync(v => v.VistaPadreId == vistaId);
+        if (tieneHijos)
+            throw new InvalidOperationException("No se puede eliminar: la vista tiene sub-vistas asociadas. Elimínalas primero.");
 
-        if (referenciada)
-            throw new InvalidOperationException("No se puede eliminar la vista porque hay accesos de usuario asociados a ella.");
+        // No borrar si hay accesos de usuario apuntando a ella
+        if (await _db.UsuarioVistasAcceso.AnyAsync(uva => uva.VistaId == vistaId))
+            throw new InvalidOperationException("No se puede eliminar: hay accesos de usuario asociados a esta vista.");
 
         _db.Vistas.Remove(vista);
         await _db.SaveChangesAsync();
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────────
+
     private async Task ValidarProyectoExisteAsync(int proyectoId)
     {
-        bool existe = await _db.Proyectos.AnyAsync(p => p.Id == proyectoId);
-        if (!existe)
+        if (!await _db.Proyectos.AnyAsync(p => p.Id == proyectoId))
             throw new KeyNotFoundException($"Proyecto con Id {proyectoId} no encontrado.");
+    }
+
+    private static void ValidarPlataforma(string plataforma)
+    {
+        string[] validas = ["Web", "Desktop", "Mobile", "Web+Mobile", "Web+Desktop", "Todos"];
+        if (!validas.Contains(plataforma))
+            throw new InvalidOperationException($"Plataforma '{plataforma}' no válida.");
+    }
+
+    private static void ValidarEstado(string estado)
+    {
+        string[] validos = ["Produccion", "Mantenimiento", "Desarrollo"];
+        if (!validos.Contains(estado))
+            throw new InvalidOperationException($"Estado '{estado}' no válido.");
+    }
+
+    public async Task<ProyectoDetalleDto?> ObtenerPorCodigoAsync(string codigo)
+    {
+        var proyecto = await _db.Proyectos
+            .Include(p => p.Roles)
+            .Include(p => p.Vistas)
+            .FirstOrDefaultAsync(p => p.Codigo == codigo);
+
+        return proyecto is null ? null : MapProyectoDetalle(proyecto);
     }
 
     private static ProyectoDetalleDto MapProyectoDetalle(Proyecto proyecto)
     {
         return new ProyectoDetalleDto(
-            proyecto.Id,
-            proyecto.Codigo,
-            proyecto.Nombre,
-            proyecto.Plataforma,
-            proyecto.IconoCss,
-            proyecto.UrlBase,
-            proyecto.Estado,
-            proyecto.Version,
-            proyecto.Descripcion,
-            proyecto.Orden,
-            proyecto.Activo,
+            proyecto.Id, proyecto.Codigo, proyecto.Nombre, proyecto.Plataforma,
+            proyecto.IconoCss, proyecto.UrlBase, proyecto.Estado, proyecto.Version,
+            proyecto.Descripcion, proyecto.Orden, proyecto.Activo,
             proyecto.Roles.Select(r => new RolDto(r.Id, r.Nombre, r.Nivel, r.Descripcion, r.Activo)),
-            proyecto.Vistas.Select(v => new VistaDto(v.Id, v.Codigo, v.Nombre, v.Ruta, v.Icono, v.Descripcion, v.Orden, v.Activo))
+            proyecto.Vistas.Select(v => new VistaDto(
+                v.Id, v.Codigo, v.Nombre, v.Ruta, v.Icono,
+                v.Descripcion, v.Orden, v.Activo,
+                v.VistaPadreId, v.EsContenedor))
         );
     }
 }

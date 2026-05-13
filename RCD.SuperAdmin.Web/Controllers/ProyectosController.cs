@@ -178,4 +178,14 @@ public class ProyectosController(IProyectoService proyectoService) : ControllerB
             return BadRequest(new { mensaje = ex.Message }); // Ej. Vista en uso en accesos
         }
     }
+
+    [HttpGet("codigo/{codigo}")]
+    [Authorize(Roles = "SuperAdmin, Admin, Auditor")]
+    public async Task<IActionResult> ObtenerPorCodigo(string codigo)
+    {
+        var proyecto = await proyectoService.ObtenerPorCodigoAsync(codigo);
+        return proyecto is null
+            ? NotFound(new { mensaje = "Proyecto no encontrado." })
+            : Ok(proyecto);
+    }
 }

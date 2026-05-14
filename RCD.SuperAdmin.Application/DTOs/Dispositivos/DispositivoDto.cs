@@ -8,6 +8,7 @@ public record DispositivoDto(
     string? DeviceToken,
     string? FcmToken,
     string? DispositivoInfo,
+    string? ProyectoCodigo,
     bool Activo,
     DateTime FechaCreacion
 );

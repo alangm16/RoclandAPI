@@ -48,7 +48,6 @@ public static class SuperAdminSetup
         services.AddScoped<ILogAccesoService, LogAccesoService>();
         services.AddScoped<IMenuService, MenuService>();
         services.AddScoped<IProyectoService, ProyectoService>();
-        services.AddScoped<IRolSAService, RolSAService>();
         services.AddScoped<ITokenDispositivoService, TokenDispositivoService>();
         services.AddScoped<IUsuarioService, UsuarioService>();
         services.AddScoped<IVisibilidadService, VisibilidadService>();

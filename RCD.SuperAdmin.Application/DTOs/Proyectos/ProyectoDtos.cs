@@ -88,3 +88,43 @@ public record ActualizarProyectoDto(
     string? Descripcion,
     int Orden
 );
+
+public record ActualizarRolDto(
+    string Nombre,
+    int Nivel,
+    string? Descripcion,
+    bool Activo
+);
+
+public record ActualizarVistaDto(
+    string Codigo,
+    string Nombre,
+    string Ruta,
+    string? Icono,
+    string? Descripcion,
+    int? VistaPadreId,
+    bool EsContenedor,
+    int Orden,
+    bool Activo
+);
+
+public record UsuarioProyectoDto(
+    int UsuarioId,
+    string Username,
+    string NombreCompleto,
+    string? Email,
+    string Rol,
+    int NivelRol,
+    bool Activo,              // Estado de la asignación
+    string? CreadoPor,
+    DateTime FechaAsignacion
+);
+
+public record ReordenarProyectosDto(
+    IEnumerable<ProyectoOrdenDto> Items
+);
+
+public record ProyectoOrdenDto(
+    int Id,
+    int Orden
+);

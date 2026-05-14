@@ -68,7 +68,9 @@ public class TokenDispositivoService : ITokenDispositivoService
         const int maxPageSize = 50;
         var pageSize = tamanoPagina > maxPageSize ? maxPageSize : tamanoPagina;
 
-        var query = _db.TokensDispositivo.Where(td => td.UsuarioId == usuarioId);
+        var query = _db.TokensDispositivo
+            .Include(td => td.Proyecto)
+            .Where(td => td.UsuarioId == usuarioId);
         var total = await query.CountAsync();
 
         var items = await query
@@ -81,6 +83,7 @@ public class TokenDispositivoService : ITokenDispositivoService
                 td.DeviceToken,
                 td.FcmToken,
                 td.DispositivoInfo,
+                td.Proyecto.Codigo,
                 td.Activo,
                 td.FechaCreacion
             ))

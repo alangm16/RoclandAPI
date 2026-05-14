@@ -1,6 +1,7 @@
 ﻿// RCD.SuperAdmin.Web/Controllers/ProyectosController.cs
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using RCD.SuperAdmin.Application.DTOs;
 using RCD.SuperAdmin.Application.DTOs.Proyectos;
 using RCD.SuperAdmin.Application.Interfaces;
 
@@ -110,21 +111,26 @@ public class ProyectosController(IProyectoService proyectoService) : ControllerB
     }
 
     [HttpDelete("{proyectoId:int}/roles/{rolId:int}")]
-    public async Task<IActionResult> EliminarRol(int proyectoId, int rolId)
+    public async Task<IActionResult> DesactivarRol(int proyectoId, int rolId)
     {
         try
         {
-            await proyectoService.EliminarRolAsync(proyectoId, rolId);
+            await proyectoService.DesactivarRolAsync(proyectoId, rolId);
             return NoContent();
         }
-        catch (KeyNotFoundException ex)
+        catch (KeyNotFoundException ex) { return NotFound(new { mensaje = ex.Message }); }
+        catch (InvalidOperationException ex) { return BadRequest(new { mensaje = ex.Message }); }
+    }
+
+    [HttpPut("{proyectoId:int}/roles/{rolId:int}/activar")]
+    public async Task<IActionResult> ActivarRol(int proyectoId, int rolId)
+    {
+        try
         {
-            return NotFound(new { mensaje = ex.Message });
+            await proyectoService.ActivarRolAsync(proyectoId, rolId);
+            return NoContent();
         }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(new { mensaje = ex.Message }); // Ej. Rol asignado a un usuario
-        }
+        catch (KeyNotFoundException ex) { return NotFound(new { mensaje = ex.Message }); }
     }
 
     // 3. GESTIÓN DE VISTAS DEL PROYECTO
@@ -162,11 +168,11 @@ public class ProyectosController(IProyectoService proyectoService) : ControllerB
     }
 
     [HttpDelete("{proyectoId:int}/vistas/{vistaId:int}")]
-    public async Task<IActionResult> EliminarVista(int proyectoId, int vistaId)
+    public async Task<IActionResult> DesactivarVista(int proyectoId, int vistaId)
     {
         try
         {
-            await proyectoService.EliminarVistaAsync(proyectoId, vistaId);
+            await proyectoService.DesactivarVistaAsync(proyectoId, vistaId);
             return NoContent();
         }
         catch (KeyNotFoundException ex)
@@ -175,7 +181,25 @@ public class ProyectosController(IProyectoService proyectoService) : ControllerB
         }
         catch (InvalidOperationException ex)
         {
-            return BadRequest(new { mensaje = ex.Message }); // Ej. Vista en uso en accesos
+            return BadRequest(new { mensaje = ex.Message }); // Ej. Vista con hijos activos o accesos
+        }
+    }
+
+    [HttpPut("{proyectoId:int}/vistas/{vistaId:int}/activar")]
+    public async Task<IActionResult> ActivarVista(int proyectoId, int vistaId)
+    {
+        try
+        {
+            await proyectoService.ActivarVistaAsync(proyectoId, vistaId);
+            return NoContent();
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { mensaje = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { mensaje = ex.Message });
         }
     }
 
@@ -187,5 +211,79 @@ public class ProyectosController(IProyectoService proyectoService) : ControllerB
         return proyecto is null
             ? NotFound(new { mensaje = "Proyecto no encontrado." })
             : Ok(proyecto);
+    }
+
+    [HttpPut("{proyectoId:int}/roles/{rolId:int}")]
+    public async Task<IActionResult> ActualizarRol(int proyectoId, int rolId, [FromBody] ActualizarRolDto dto)
+    {
+        try
+        {
+            var rol = await proyectoService.ActualizarRolAsync(proyectoId, rolId, dto);
+            return Ok(rol);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { mensaje = ex.Message });
+        }
+    }
+
+    [HttpPut("{proyectoId:int}/vistas/{vistaId:int}")]
+    public async Task<IActionResult> ActualizarVista(int proyectoId, int vistaId, [FromBody] ActualizarVistaDto dto)
+    {
+        try
+        {
+            var vista = await proyectoService.ActualizarVistaAsync(proyectoId, vistaId, dto);
+            return Ok(vista);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { mensaje = ex.Message });
+        }
+    }
+
+    [HttpGet("{proyectoId:int}/usuarios")]
+    [Authorize(Roles = "SuperAdmin, Admin, Auditor")]
+    public async Task<IActionResult> ObtenerUsuariosDelProyecto(
+    int proyectoId,
+    [FromQuery] int pagina = 1,
+    [FromQuery] int tamanoPagina = 20)
+    {
+        try
+        {
+            var resultado = await proyectoService.ObtenerUsuariosPorProyectoAsync(proyectoId, pagina, tamanoPagina);
+            return Ok(resultado);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { mensaje = ex.Message });
+        }
+    }
+
+    [HttpPut("{id:int}/activar")]
+    public async Task<IActionResult> Activar(int id)
+    {
+        try
+        {
+            await proyectoService.ActivarAsync(id);
+            return NoContent();
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { mensaje = ex.Message });
+        }
+    }
+
+    [HttpPut("reordenar")]
+    public async Task<IActionResult> Reordenar([FromBody] ReordenarProyectosDto request)
+    {
+        try
+        {
+            await proyectoService.ReordenarAsync(request.Items);
+            return NoContent();
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { mensaje = ex.Message });
+        }
     }
 }

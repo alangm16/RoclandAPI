@@ -17,7 +17,6 @@ public class SuperAdminDbContext : DbContext
         _currentUserService = currentUserService;
     }
 
-    public DbSet<RolSA> RolesSA => Set<RolSA>();
     public DbSet<Usuario> Usuarios => Set<Usuario>();
     public DbSet<Proyecto> Proyectos => Set<Proyecto>();
     public DbSet<Rol> Roles => Set<Rol>();
@@ -33,13 +32,6 @@ public class SuperAdminDbContext : DbContext
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
-
-        // ── 0. RolSA ──────────────────────────────────────────────────────────
-        modelBuilder.Entity<RolSA>(b =>
-        {
-            b.ToTable("TBL_ROCLAND_SUPERADMIN_ROLES_SA");
-            b.HasIndex(r => r.Nombre).IsUnique();
-        });
 
         // ── 1. Usuarios ───────────────────────────────────────────────────────
         modelBuilder.Entity<Usuario>(b =>

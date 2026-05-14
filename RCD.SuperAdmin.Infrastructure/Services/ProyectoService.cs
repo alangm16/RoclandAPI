@@ -1,4 +1,6 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using DocumentFormat.OpenXml.InkML;
+using Microsoft.EntityFrameworkCore;
+using RCD.SuperAdmin.Application.DTOs;
 using RCD.SuperAdmin.Application.DTOs.Proyectos;
 using RCD.SuperAdmin.Application.Interfaces;
 using RCD.SuperAdmin.Domain.Entities;
@@ -140,17 +142,28 @@ public class ProyectoService : IProyectoService
         return new RolDto(rol.Id, rol.Nombre, rol.Nivel, rol.Descripcion, rol.Activo);
     }
 
-    public async Task EliminarRolAsync(int proyectoId, int rolId)
+    public async Task DesactivarRolAsync(int proyectoId, int rolId)
     {
         await ValidarProyectoExisteAsync(proyectoId);
-
         var rol = await _db.Roles.FirstOrDefaultAsync(r => r.Id == rolId && r.ProyectoId == proyectoId)
-            ?? throw new KeyNotFoundException("Rol no encontrado en el proyecto.");
+            ?? throw new KeyNotFoundException("Rol no encontrado.");
 
+        // Validación clave
         if (await _db.ProyectoUsuarioRoles.AnyAsync(pur => pur.RolId == rolId && pur.Activo))
-            throw new InvalidOperationException("No se puede eliminar: hay usuarios asignados a este rol.");
+            throw new InvalidOperationException("No se puede desactivar: hay usuarios asignados activos a este rol.");
 
-        _db.Roles.Remove(rol);
+        rol.Activo = false;
+        await _db.SaveChangesAsync();
+    }
+
+    // Si quieres permitir reactivar:
+    public async Task ActivarRolAsync(int proyectoId, int rolId)
+    {
+        await ValidarProyectoExisteAsync(proyectoId);
+        var rol = await _db.Roles.FirstOrDefaultAsync(r => r.Id == rolId && r.ProyectoId == proyectoId)
+            ?? throw new KeyNotFoundException("Rol no encontrado.");
+        rol.Activo = true;
+        _db.Roles.Update(rol);
         await _db.SaveChangesAsync();
     }
 
@@ -212,23 +225,41 @@ public class ProyectoService : IProyectoService
             vista.VistaPadreId, vista.EsContenedor);
     }
 
-    public async Task EliminarVistaAsync(int proyectoId, int vistaId)
+    public async Task DesactivarVistaAsync(int proyectoId, int vistaId)
     {
         await ValidarProyectoExisteAsync(proyectoId);
-
         var vista = await _db.Vistas.FirstOrDefaultAsync(v => v.Id == vistaId && v.ProyectoId == proyectoId)
-            ?? throw new KeyNotFoundException("Vista no encontrada en el proyecto.");
+            ?? throw new KeyNotFoundException("Vista no encontrada.");
 
-        // No borrar si tiene hijos (FK auto-referencial NoAction)
-        var tieneHijos = await _db.Vistas.AnyAsync(v => v.VistaPadreId == vistaId);
-        if (tieneHijos)
-            throw new InvalidOperationException("No se puede eliminar: la vista tiene sub-vistas asociadas. Elimínalas primero.");
+        // Validación hijos activos
+        var tieneHijosActivos = await _db.Vistas.AnyAsync(v => v.VistaPadreId == vistaId && v.Activo);
+        if (tieneHijosActivos)
+            throw new InvalidOperationException("No se puede desactivar: la vista tiene sub-vistas activas. Desactívalas primero.");
 
-        // No borrar si hay accesos de usuario apuntando a ella
-        if (await _db.UsuarioVistasAcceso.AnyAsync(uva => uva.VistaId == vistaId))
-            throw new InvalidOperationException("No se puede eliminar: hay accesos de usuario asociados a esta vista.");
+        // Validación accesos de usuario activos
+        if (await _db.UsuarioVistasAcceso.AnyAsync(uva => uva.VistaId == vistaId && uva.TieneAcceso))
+            throw new InvalidOperationException("No se puede desactivar: hay accesos de usuario activos a esta vista.");
 
-        _db.Vistas.Remove(vista);
+        vista.Activo = false;
+        await _db.SaveChangesAsync();
+    }
+
+    public async Task ActivarVistaAsync(int proyectoId, int vistaId)
+    {
+        await ValidarProyectoExisteAsync(proyectoId);
+        var vista = await _db.Vistas.FirstOrDefaultAsync(v => v.Id == vistaId && v.ProyectoId == proyectoId)
+            ?? throw new KeyNotFoundException("Vista no encontrada.");
+
+        // Opcional: validar que el padre esté activo (si tiene padre)
+        if (vista.VistaPadreId.HasValue)
+        {
+            var padreActivo = await _db.Vistas.AnyAsync(v => v.Id == vista.VistaPadreId.Value && v.Activo);
+            if (!padreActivo)
+                throw new InvalidOperationException("No se puede activar: la vista padre está inactiva. Actívala primero.");
+        }
+
+        vista.Activo = true;
+        _db.Vistas.Update(vista);
         await _db.SaveChangesAsync();
     }
 
@@ -276,5 +307,106 @@ public class ProyectoService : IProyectoService
                 v.Descripcion, v.Orden, v.Activo,
                 v.VistaPadreId, v.EsContenedor))
         );
+    }
+
+    public async Task<RolDto> ActualizarRolAsync(int proyectoId, int rolId, ActualizarRolDto dto)
+    {
+        await ValidarProyectoExisteAsync(proyectoId);
+        var rol = await _db.Roles.FirstOrDefaultAsync(r => r.Id == rolId && r.ProyectoId == proyectoId)
+            ?? throw new KeyNotFoundException("Rol no encontrado.");
+
+        if (await _db.Roles.AnyAsync(r => r.ProyectoId == proyectoId && r.Nombre == dto.Nombre && r.Id != rolId))
+            throw new InvalidOperationException($"Ya existe un rol con el nombre '{dto.Nombre}'.");
+
+        rol.Nombre = dto.Nombre;
+        rol.Nivel = dto.Nivel;
+        rol.Descripcion = dto.Descripcion;
+        rol.Activo = dto.Activo;
+
+        _db.Roles.Update(rol);
+        await _db.SaveChangesAsync();
+
+        return new RolDto(rol.Id, rol.Nombre, rol.Nivel, rol.Descripcion, rol.Activo);
+    }
+
+    public async Task<VistaDto> ActualizarVistaAsync(int proyectoId, int vistaId, ActualizarVistaDto dto)
+    {
+        await ValidarProyectoExisteAsync(proyectoId);
+        var vista = await _db.Vistas.FirstOrDefaultAsync(v => v.Id == vistaId && v.ProyectoId == proyectoId)
+            ?? throw new KeyNotFoundException("Vista no encontrada.");
+
+        if (await _db.Vistas.AnyAsync(v => v.ProyectoId == proyectoId && v.Codigo == dto.Codigo && v.Id != vistaId))
+            throw new InvalidOperationException($"Ya existe una vista con el código '{dto.Codigo}'.");
+
+        if (dto.VistaPadreId.HasValue)
+        {
+            var padreExiste = await _db.Vistas.AnyAsync(v => v.Id == dto.VistaPadreId.Value && v.ProyectoId == proyectoId);
+            if (!padreExiste) throw new InvalidOperationException("La vista padre no existe en este proyecto.");
+        }
+
+        vista.Codigo = dto.Codigo;
+        vista.Nombre = dto.Nombre;
+        vista.Ruta = dto.Ruta;
+        vista.Icono = dto.Icono;
+        vista.Descripcion = dto.Descripcion;
+        vista.VistaPadreId = dto.VistaPadreId;
+        vista.EsContenedor = dto.EsContenedor;
+        vista.Orden = dto.Orden;
+        vista.Activo = dto.Activo;
+
+        _db.Vistas.Update(vista);
+        await _db.SaveChangesAsync();
+
+        return new VistaDto(vista.Id, vista.Codigo, vista.Nombre, vista.Ruta, vista.Icono,
+            vista.Descripcion, vista.Orden, vista.Activo, vista.VistaPadreId, vista.EsContenedor);
+    }
+
+    public async Task<PagedResult<UsuarioProyectoDto>> ObtenerUsuariosPorProyectoAsync(int proyectoId, int pagina, int tamanoPagina)
+    {
+        await ValidarProyectoExisteAsync(proyectoId);
+        var query = _db.ProyectoUsuarioRoles
+            .Include(pur => pur.Usuario)
+            .Include(pur => pur.Rol)
+            .Include(pur => pur.CreadoPorUsuario)
+            .Where(pur => pur.ProyectoId == proyectoId && pur.Activo);
+
+        var total = await query.CountAsync();
+        var items = await query
+            .OrderByDescending(pur => pur.FechaCreacion)
+            .Skip((pagina - 1) * tamanoPagina)
+            .Take(tamanoPagina)
+            .Select(pur => new UsuarioProyectoDto(
+                pur.Usuario.Id,
+                pur.Usuario.Username,
+                pur.Usuario.NombreCompleto,
+                pur.Usuario.Email,
+                pur.Rol.Nombre,
+                pur.Rol.Nivel,
+                pur.Activo,
+                pur.CreadoPorUsuario != null ? pur.CreadoPorUsuario.Username : "Sistema",
+                pur.FechaCreacion
+            ))
+            .ToListAsync();
+
+        return new PagedResult<UsuarioProyectoDto>(items, total, pagina, tamanoPagina);
+    }
+    public async Task ActivarAsync(int id)
+    {
+        var proyecto = await _db.Proyectos.FindAsync(id)
+            ?? throw new KeyNotFoundException($"Proyecto con Id {id} no encontrado.");
+        proyecto.Activo = true;
+        _db.Proyectos.Update(proyecto);
+        await _db.SaveChangesAsync();
+    }
+
+    public async Task ReordenarAsync(IEnumerable<ProyectoOrdenDto> items)
+    {
+        foreach (var item in items)
+        {
+            var proyecto = await _db.Proyectos.FindAsync(item.Id)
+                ?? throw new KeyNotFoundException($"Proyecto {item.Id} no encontrado.");
+            proyecto.Orden = item.Orden;
+        }
+        await _db.SaveChangesAsync();
     }
 }

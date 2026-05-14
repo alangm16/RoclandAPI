@@ -47,6 +47,22 @@ public class AuthController(
         }
     }
 
+    // ── FLUJO 5: LOGIN POR CÓDIGO QR (MÓVIL) ──
+    [HttpPost("login-qr")]
+    [AllowAnonymous]
+    public async Task<IActionResult> LoginQr([FromBody] LoginQrDto request)
+    {
+        try
+        {
+            var result = await authService.LoginQrAsync(request);
+            return Ok(result);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return Unauthorized(new { mensaje = ex.Message });
+        }
+    }
+
     // ── FLUJO 3: RENOVACIÓN DE TOKENS ──
     [HttpPost("refresh")]
     [AllowAnonymous]

@@ -149,6 +149,75 @@ public class AuthService(
         );
     }
 
+    public async Task<AuthResultDto> LoginQrAsync(LoginQrDto dto)
+    {
+        // 1. Buscar usuario activo por su QRCode
+        var usuario = await db.Usuarios
+            .FirstOrDefaultAsync(u => u.QRCode == dto.QrCode && u.Activo);
+
+        // Validaciones básicas de seguridad (similares a ValidarCredencialesAsync)
+        if (usuario is null)
+        {
+            // Registramos el log de intento fallido sin revelar datos sensibles
+            await RegistrarLogAsync(null, dto.CodigoProyecto, "QR Login", false, "Código QR no encontrado o usuario inactivo.");
+            throw new UnauthorizedAccessException("Código QR inválido o usuario inactivo.");
+        }
+
+        if (usuario.BloqueadoHasta.HasValue && usuario.BloqueadoHasta > DateTime.UtcNow)
+        {
+            await RegistrarLogAsync(usuario.Id, dto.CodigoProyecto, usuario.Username, false, $"Cuenta bloqueada hasta {usuario.BloqueadoHasta:HH:mm:ss} UTC.");
+            throw new UnauthorizedAccessException($"Cuenta bloqueada temporalmente. Intente después de {usuario.BloqueadoHasta:HH:mm} UTC.");
+        }
+
+        // 2. Verificar que el usuario tenga un rol activo en el proyecto solicitado (Acceso Control Móvil)
+        var asignacion = await db.ProyectoUsuarioRoles
+            .Include(pur => pur.Proyecto)
+            .Include(pur => pur.Rol)
+            .FirstOrDefaultAsync(pur =>
+                pur.UsuarioId == usuario.Id &&
+                pur.Proyecto.Codigo == dto.CodigoProyecto &&
+                pur.Activo == true &&
+                pur.Proyecto.Activo == true);
+
+        if (asignacion is null)
+        {
+            await RegistrarLogAsync(usuario.Id, dto.CodigoProyecto, usuario.Username, false, "Sin acceso al proyecto mediante QR.");
+            throw new UnauthorizedAccessException($"El usuario '{usuario.Username}' no tiene acceso al proyecto '{dto.CodigoProyecto}'.");
+        }
+
+        // 3. Generar tokens (Token Directo)
+        var tokenClaims = new TokenDirectoClaimsDto(
+            UsuarioId: usuario.Id,
+            Username: usuario.Username,
+            ProyectoId: asignacion.ProyectoId,
+            CodigoProyecto: asignacion.Proyecto.Codigo,
+            RolId: asignacion.RolId,
+            NombreRol: asignacion.Rol.Nombre,
+            NivelRol: asignacion.Rol.Nivel,
+            Plataforma: dto.Plataforma
+        );
+
+        var accessToken = jwtService.GenerarTokenDirecto(tokenClaims);
+        var refreshToken = jwtService.GenerarRefreshToken();
+        var expiracion = DateTime.UtcNow.AddMinutes(_jwt.ExpirationMinutes);
+
+        // 4. Persistir RefreshToken
+        await GuardarRefreshTokenAsync(usuario.Id, asignacion.ProyectoId, dto.Plataforma, refreshToken);
+
+        // 5. Actualizar TokenDispositivo (FCM / device)
+        await ActualizarTokenDispositivoAsync(usuario.Id, asignacion.ProyectoId, dto.Plataforma);
+
+        // 6. Resetear intentos fallidos + UltimoAcceso y guardar Log
+        await RegistrarAccesoExitosoAsync(usuario, dto.CodigoProyecto, dto.Plataforma);
+
+        return new AuthResultDto(
+            AccessToken: accessToken,
+            RefreshToken: refreshToken,
+            Expiracion: expiracion,
+            Usuario: MapUsuarioToken(usuario)
+        );
+    }
+
     public async Task<AuthResultDto> RefrescarTokenAsync(RefreshTokenDto dto)
     {
         // 1. Buscar el RefreshToken vigente (sin incluir RolSA)

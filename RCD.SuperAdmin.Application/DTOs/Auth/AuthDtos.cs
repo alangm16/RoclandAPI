@@ -9,6 +9,12 @@ public record LoginDirectoDto(
     string Plataforma       // Web | Desktop | Mobile
 );
 
+public record LoginQrDto(
+    string QrCode,
+    string CodigoProyecto,  // ej: "ACCESO-CONTROL-MOVIL"
+    string Plataforma       // ej: "Mobile"
+);
+
 /// Flujo 2 — Panel Web SA.
 /// Sin proyecto: SuperAdmin devuelve la lista de proyectos accesibles.
 public record LoginMaestroDto(
@@ -58,15 +64,13 @@ public record ProyectoAccesoDto(
     string Plataforma,
     string? IconoCss,
     string? UrlBase,
-    string RolEnProyecto,   // nombre del rol que tiene en ese proyecto
+    string RolEnProyecto,   
     int NivelRol
 );
 
-// ─────────────────────────────────────────────────────────────────────────────
 // CLAIMS INTERNOS (para IJwtService)
-// ─────────────────────────────────────────────────────────────────────────────
 
-/// <summary>Claims para generar un JWT de acceso directo a proyecto.</summary>
+/// Claims para generar un JWT de acceso directo a proyecto
 public record TokenDirectoClaimsDto(
     int UsuarioId,
     string Username,
@@ -81,19 +85,19 @@ public record TokenDirectoClaimsDto(
 public record TokenMaestroClaimsDto(
     int UsuarioId,
     string Username,
-    string Rol,       // ← antes RolSA
-    int Nivel,        // ← antes NivelSA
+    string Rol,       
+    int Nivel,        
     string Plataforma
 );
 
-/// <summary>Claims extraídos al validar cualquier JWT.</summary>
+/// Claims extraídos al validar cualquier JWT.
 public record TokenClaimsDto(
     int UsuarioId,
     string Username,
     bool EsMaestro,
     int? ProyectoId,
     string? CodigoProyecto,
-    string? NombreRol,   // ← antes NombreRol (igual) y eliminamos RolSA
-    int? NivelRol,       // ← unificado (antes NivelRol para proyectos, ahora también para maestro)
+    string? NombreRol,   
+    int? NivelRol,       
     string Plataforma
 );

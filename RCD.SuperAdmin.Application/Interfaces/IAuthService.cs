@@ -18,6 +18,11 @@ public interface IAuthService
     /// Devuelve un "token maestro" + la lista de proyectos a los que tiene acceso.
     Task<AuthMaestroResultDto> LoginMaestroAsync(LoginMaestroDto dto);
 
+    /// Flujo 5 — App Móvil (acceso directo por QR).
+    /// Valida el QRCode del usuario + rol activo en el proyecto solicitado.
+    /// Devuelve un JWT con claims [Usuario, Proyecto, Rol].
+    Task<AuthResultDto> LoginQrAsync(LoginQrDto dto);
+
     /// Renueva un JWT expirado usando un RefreshToken válido.
     /// Aplica a ambos flujos.
     Task<AuthResultDto> RefrescarTokenAsync(RefreshTokenDto dto);

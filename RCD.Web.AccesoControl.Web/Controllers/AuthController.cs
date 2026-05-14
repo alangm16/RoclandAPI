@@ -1,7 +1,6 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RCD.Web.AccesoControl.Application.DTOs;
-using RCD.Web.AccesoControl.Application.Interfaces;
 using System.Security.Claims;
 
 namespace RCD.Web.AccesoControl.Web.Controllers;
@@ -23,25 +22,40 @@ public class AuthController : ControllerBase
     /// Se completa con el rol y nivel de rol extraídos del mismo token.
     /// </summary>
     [HttpGet("mi-perfil")]
-    [Authorize] // Basta con que el token sea válido para el proyecto "acceso-control"
+    [Authorize]
     public async Task<IActionResult> ObtenerMiPerfil()
     {
-        // 1. Extraer el ID del usuario del claim 'sub' (NameIdentifier)
+        // 1. Validar que NO sea token maestro
+        var esMaestro = User.FindFirst("esMaestro")?.Value == "true";
+        if (esMaestro)
+            return Forbid("Token maestro no válido para acceder a un proyecto específico.");
+
+        // 2. Extraer claims necesarios
         var subClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (string.IsNullOrEmpty(subClaim) || !int.TryParse(subClaim, out int superAdminId))
             return Unauthorized(new { mensaje = "Token inválido o sin identificador de usuario." });
 
-        // 2. Buscar el perfil local en Acceso Control
+        var nombreRol = User.FindFirst("nombreRol")?.Value ?? string.Empty;
+        var plataforma = User.FindFirst("plataforma")?.Value ?? string.Empty;
+
+        // 3. Validar rol y plataforma para el panel web
+        var rolesPermitidos = new[] { "Gerente", "Supervisor", "Auditor" };
+        if (!rolesPermitidos.Contains(nombreRol))
+            return Forbid($"Rol '{nombreRol}' no tiene acceso al panel web. Roles permitidos: {string.Join(", ", rolesPermitidos)}.");
+
+        if (plataforma != "Web")
+            return Forbid($"Plataforma '{plataforma}' incorrecta. Se esperaba 'Web'.");
+
+        // 4. Buscar perfil local en Acceso Control (solo activos)
         var perfil = await _auth.ObtenerPerfilContextoAsync(superAdminId);
         if (perfil is null)
-            return StatusCode(403, new { mensaje = "No tienes un perfil activo en el módulo de Acceso Control." });
+            return StatusCode(403, new { mensaje = "No tienes un perfil activo en el módulo de Acceso Control. Contacta al administrador." });
 
-        // 3. Tomar el rol del token JWT (ya viene validado por SuperAdmin)
-        var nombreRol = User.FindFirst("nombreRol")?.Value ?? string.Empty;
+        // 5. Obtener nivel del rol (del token)
         var nivelRolStr = User.FindFirst("nivelRol")?.Value ?? "0";
         int.TryParse(nivelRolStr, out int nivelRol);
 
-        // 4. Retornar el DTO con todos los datos
+        // 6. Retornar DTO
         return Ok(new PerfilContextoDto(
             PerfilId: perfil.PerfilId,
             SuperAdminUsuarioId: perfil.SuperAdminUsuarioId,

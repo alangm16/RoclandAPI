@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using RCD.Web.AccesoControl.Application.DTOs;
 using RCD.Web.AccesoControl.Application.Interfaces;
+using RCD.Web.AccesoControl.Web.Services;
 
 namespace RCD.Web.AccesoControl.Web.Controllers;
 
@@ -76,8 +77,27 @@ public class AdminController : ControllerBase
     public async Task<IActionResult> ActualizarGuardia(int id, GuardiaUpdateDto dto)
         => Ok(await _admin.ActualizarGuardiaAsync(id, dto));
 
-    // NOTA: Se eliminaron CrearGuardia y ResetPassword porque esas 
-    // acciones ahora le corresponden estrictamente al módulo SuperAdmin.
+    [HttpGet("usuarios/sinperfil")]
+    public async Task<IActionResult> ObtenerUsuariosSinPerfil()
+    {
+        var lista = await _admin.ObtenerUsuariosSinPerfilAsync();
+        return Ok(lista);
+    }
+
+    [HttpPost("usuarios/crearperfil")]
+    public async Task<IActionResult> CrearPerfil([FromBody] CrearPerfilRequest request)
+    {
+        if (request == null) return BadRequest();
+        var ok = await _admin.CrearPerfilAsync(request);
+        return ok ? Ok() : BadRequest("No se pudo crear el perfil. Verifique que el usuario tenga asignación válida.");
+    }
+
+    [HttpPut("guardias/{id}/estado")]
+    public async Task<IActionResult> CambiarEstadoPerfil(int id, [FromBody] bool activo)
+    {
+        var ok = await _admin.ActualizarEstadoPerfilAsync(id, activo);
+        return ok ? Ok() : NotFound();
+    }
 
     // ── Catálogos ──────────────────────────────────────────────────────
     [HttpPost("areas")]

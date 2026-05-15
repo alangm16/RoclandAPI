@@ -152,7 +152,7 @@ public class AuditoriaService : IAuditoriaService
             : string.Empty;
 
         // Consulta para contar el total
-        var countSql = $"SELECT COUNT(*) FROM ({sql}) AS Auditoria {where}";
+        var countSql = $"SELECT COUNT(*) AS Value FROM ({sql}) AS Auditoria {where}";
         var total = await _db.Database
             .SqlQueryRaw<int>(countSql, parametros.ToArray())
             .FirstOrDefaultAsync();

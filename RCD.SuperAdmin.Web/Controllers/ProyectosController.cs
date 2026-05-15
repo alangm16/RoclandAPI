@@ -137,16 +137,13 @@ public class ProyectosController(IProyectoService proyectoService) : ControllerB
 
     [HttpGet("{proyectoId:int}/vistas")]
     [Authorize(Roles = "SuperAdmin, Admin, Auditor")]
-    public async Task<IActionResult> ObtenerVistas(int proyectoId)
+    public async Task<IActionResult> ObtenerVistas(int proyectoId, [FromQuery] bool incluirInactivas = false)
     {
         try
         {
-            return Ok(await proyectoService.ObtenerVistasAsync(proyectoId));
+            return Ok(await proyectoService.ObtenerVistasAsync(proyectoId, incluirInactivas));
         }
-        catch (KeyNotFoundException ex)
-        {
-            return NotFound(new { mensaje = ex.Message });
-        }
+        catch (KeyNotFoundException ex) { return NotFound(new { mensaje = ex.Message }); }
     }
 
     [HttpPost("{proyectoId:int}/vistas")]

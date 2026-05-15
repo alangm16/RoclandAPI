@@ -441,6 +441,77 @@ public class AdminService : IAdminService
         return await _db.SaveChangesAsync() > 0;
     }
 
+    public async Task<List<UsuarioSinPerfilDto>> ObtenerUsuariosSinPerfilAsync()
+    {
+        // SQL directo: usuarios activos en SA con asignación a 'acceso-control'
+        // y rol en (Guardia, Supervisor, Gerente) que NO existan en Perfiles locales.
+        const string sql = @"
+        SELECT 
+            u.Id AS SuperAdminUsuarioId,
+            u.NombreCompleto,
+            u.Username,
+            r.Nombre AS RolEnProyecto,
+            r.Nivel AS NivelRol
+        FROM TBL_ROCLAND_SUPERADMIN_USUARIOS u
+        INNER JOIN TBL_ROCLAND_SUPERADMIN_PROYECTO_USUARIO_ROL pur 
+            ON u.Id = pur.UsuarioId AND pur.Activo = 1
+        INNER JOIN TBL_ROCLAND_SUPERADMIN_PROYECTOS p 
+            ON pur.ProyectoId = p.Id AND p.Codigo = 'acceso-control' AND p.Activo = 1
+        INNER JOIN TBL_ROCLAND_SUPERADMIN_ROLES r 
+            ON pur.RolId = r.Id AND r.Activo = 1
+        WHERE u.Activo = 1
+          AND r.Nombre IN ('Guardia', 'Supervisor', 'Gerente')
+          AND NOT EXISTS (
+              SELECT 1 FROM TBL_ROCLAND_ACCESOCONTROL_PERFILES perf 
+              WHERE perf.SuperAdminUsuarioId = u.Id
+          )
+        ORDER BY u.NombreCompleto";
+
+        return await _db.Database.SqlQueryRaw<UsuarioSinPerfilDto>(sql).ToListAsync();
+    }
+
+    public async Task<bool> CrearPerfilAsync(CrearPerfilRequest request)
+    {
+        // Validar que el usuario exista en SA y tenga rol permitido (misma lógica que arriba)
+        var existeAsignacion = await _db.Database
+            .SqlQueryRaw<int>(@"
+                SELECT COUNT(1) AS Value
+                FROM TBL_ROCLAND_SUPERADMIN_PROYECTO_USUARIO_ROL pur
+                INNER JOIN TBL_ROCLAND_SUPERADMIN_PROYECTOS p ON pur.ProyectoId = p.Id
+                INNER JOIN TBL_ROCLAND_SUPERADMIN_ROLES r ON pur.RolId = r.Id
+                WHERE pur.UsuarioId = {0}
+                  AND p.Codigo = 'acceso-control'
+                  AND r.Nombre IN ('Guardia', 'Supervisor', 'Gerente')
+                  AND pur.Activo = 1",
+                request.SuperAdminUsuarioId)
+            .FirstOrDefaultAsync();
+
+        if (existeAsignacion == 0) return false;
+
+        var nuevo = new Perfil
+        {
+            NombreCompleto = (await _db.Database.SqlQueryRaw<string>(
+                "SELECT NombreCompleto AS Value FROM TBL_ROCLAND_SUPERADMIN_USUARIOS WHERE Id = {0}",
+                request.SuperAdminUsuarioId
+            ).FirstOrDefaultAsync()) ?? "Sin nombre",
+            NumeroEmpleado = request.NumeroEmpleado,
+            Turno = request.Turno,
+            Activo = request.Activo,
+            FechaCreacion = DateTime.UtcNow,
+            CreadoPor = null // o el ID del admin actual si se tiene
+        };
+        _db.Perfiles.Add(nuevo);
+        return await _db.SaveChangesAsync() > 0;
+    }
+
+    public async Task<bool> ActualizarEstadoPerfilAsync(int perfilId, bool activo)
+    {
+        var perfil = await _db.Perfiles.FindAsync(perfilId);
+        if (perfil == null) return false;
+        perfil.Activo = activo;
+        return await _db.SaveChangesAsync() > 0;
+    }
+
     // ── Catálogos ──────────────────────────────────────────────────────
     public async Task<IEnumerable<AreaDto>> GetAreasAsync()
     {

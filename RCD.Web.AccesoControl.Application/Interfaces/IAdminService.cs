@@ -34,6 +34,11 @@ public interface IAdminService
     Task<(IEnumerable<GuardiaListDto> Items, int Total)> ObtenerGuardiasAsync(string? busqueda, int pagina, int porPagina);
     Task<bool> ActualizarGuardiaAsync(int id, GuardiaUpdateDto dto);
 
+    // ── Perfiles (Usuarios del sistema) ──
+    Task<List<UsuarioSinPerfilDto>> ObtenerUsuariosSinPerfilAsync();
+    Task<bool> CrearPerfilAsync(CrearPerfilRequest request);
+    Task<bool> ActualizarEstadoPerfilAsync(int perfilId, bool activo);
+
     // Exportar
     Task<byte[]> ExportarExcelHoyAsync();
     Task<byte[]> ExportarPdfHoyAsync();

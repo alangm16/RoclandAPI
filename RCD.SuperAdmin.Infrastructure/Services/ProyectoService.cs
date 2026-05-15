@@ -168,20 +168,20 @@ public class ProyectoService : IProyectoService
     }
 
     // ── Vistas ───────────────────────────────────────────────────────────────
-
-    public async Task<IEnumerable<VistaDto>> ObtenerVistasAsync(int proyectoId)
+    public async Task<IEnumerable<VistaDto>> ObtenerVistasAsync(int proyectoId, bool incluirInactivas = false)
     {
         await ValidarProyectoExisteAsync(proyectoId);
+        var query = _db.Vistas.Where(v => v.ProyectoId == proyectoId);
+        if (!incluirInactivas)
+            query = query.Where(v => v.Activo);
 
-        return await _db.Vistas
-            .Where(v => v.ProyectoId == proyectoId && v.Activo)
-            .OrderBy(v => v.VistaPadreId)   // raíces primero, luego hijos
+        return await query
+            .OrderBy(v => v.VistaPadreId)
             .ThenBy(v => v.Orden)
-            .ThenBy(v => v.Nombre)
             .Select(v => new VistaDto(
                 v.Id, v.Codigo, v.Nombre, v.Ruta, v.Icono,
                 v.Descripcion, v.Orden, v.Activo,
-                v.VistaPadreId, v.EsContenedor))   // ← nuevos campos
+                v.VistaPadreId, v.EsContenedor))
             .ToListAsync();
     }
 
@@ -237,8 +237,8 @@ public class ProyectoService : IProyectoService
             throw new InvalidOperationException("No se puede desactivar: la vista tiene sub-vistas activas. Desactívalas primero.");
 
         // Validación accesos de usuario activos
-        if (await _db.UsuarioVistasAcceso.AnyAsync(uva => uva.VistaId == vistaId && uva.TieneAcceso))
-            throw new InvalidOperationException("No se puede desactivar: hay accesos de usuario activos a esta vista.");
+        //if (await _db.UsuarioVistasAcceso.AnyAsync(uva => uva.VistaId == vistaId && uva.TieneAcceso))
+        //    throw new InvalidOperationException("No se puede desactivar: hay accesos de usuario activos a esta vista.");
 
         vista.Activo = false;
         await _db.SaveChangesAsync();

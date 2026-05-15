@@ -14,7 +14,7 @@ public interface IProyectoService
     Task<RolDto> CrearRolAsync(int proyectoId, CrearRolDto dto);
     Task DesactivarRolAsync(int proyectoId, int rolId);
     Task ActivarRolAsync(int proyectoId, int rolId);
-    Task<IEnumerable<VistaDto>> ObtenerVistasAsync(int proyectoId);
+    Task<IEnumerable<VistaDto>> ObtenerVistasAsync(int proyectoId, bool incluirInactivas = false);
     Task<VistaDto> CrearVistaAsync(int proyectoId, CrearVistaDto dto);
     Task DesactivarVistaAsync(int proyectoId, int vistaId);
     Task ActivarVistaAsync(int proyectoId, int vistaId);

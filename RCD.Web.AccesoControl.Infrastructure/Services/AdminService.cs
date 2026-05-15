@@ -8,6 +8,7 @@ using RCD.Web.AccesoControl.Application.DTOs;
 using RCD.Web.AccesoControl.Domain.Models.Entities;
 using RCD.Web.AccesoControl.Application.Interfaces;
 using Microsoft.Extensions.Caching.Memory;
+using RCD.Shared.Kernel.Interfaces;
 
 namespace RCD.Web.AccesoControl.Web.Services;
 
@@ -15,16 +16,18 @@ public class AdminService : IAdminService
 {
     private readonly AccesoControlWebDbContext _db;
     private readonly IMemoryCache _cache;
+    private readonly ICurrentUserService _currentUserService;
     private static readonly TimeSpan _offsetMexico = TimeSpan.FromHours(-6);
 
     private const string CacheKeyAreas = "Catalogos_Areas";
     private const string CacheKeyTiposId = "Catalogos_TiposId";
     private const string CacheKeyMotivos = "Catalogos_Motivos";
 
-    public AdminService(AccesoControlWebDbContext db, IMemoryCache cache)
+    public AdminService(AccesoControlWebDbContext db, IMemoryCache cache, ICurrentUserService currentUserService)
     {
         _db = db;
         _cache = cache;
+        _currentUserService = currentUserService;
     }
 
     // ── KPIs ───────────────────────────────────────────────────────────
@@ -398,8 +401,14 @@ public class AdminService : IAdminService
     // ── Guardias (Refactorizado a Perfiles) ────────────────────────────
     public async Task<(IEnumerable<GuardiaListDto> Items, int Total)> ObtenerGuardiasAsync(string? busqueda, int pagina, int porPagina)
     {
-        // ── FIX: Consultamos la tabla Perfiles
-        var query = _db.Perfiles.AsQueryable().AsNoTracking();
+        var query = _db.Perfiles
+            .FromSqlRaw(@"
+            SELECT p.* FROM TBL_ROCLAND_ACCESOCONTROL_PERFILES p
+            INNER JOIN TBL_ROCLAND_SUPERADMIN_USUARIOS u 
+                ON p.SuperAdminUsuarioId = u.Id
+            WHERE u.Activo = 1
+        ")
+            .AsNoTracking();
 
         if (!string.IsNullOrWhiteSpace(busqueda))
         {
@@ -411,7 +420,7 @@ public class AdminService : IAdminService
 
         var total = await query.CountAsync();
 
-        // ── FIX: Adaptamos el mapeo al DTO original (reutilizamos la propiedad Usuario para mostrar el TipoPerfil o No.Empleado)
+        // ── FIX: Adaptamos el mapeo al DTO original 
         var items = await query
             .OrderByDescending(g => g.Activo)
             .ThenBy(g => g.NombreCompleto)
@@ -421,7 +430,7 @@ public class AdminService : IAdminService
                 g.Id,
                 g.NombreCompleto,
                 g.NumeroEmpleado ?? "N/A",
-                g.Turno ?? "Sin turno",   // Rol ← antes g.TipoPerfil
+                g.Turno ?? "Sin turno",
                 g.Activo,
                 g.FechaCreacion
             ))
@@ -488,17 +497,21 @@ public class AdminService : IAdminService
 
         if (existeAsignacion == 0) return false;
 
+        int? adminId = null;
+        adminId = _currentUserService.GetUserId() ?? 1;
+
         var nuevo = new Perfil
         {
+            SuperAdminUsuarioId = request.SuperAdminUsuarioId,
             NombreCompleto = (await _db.Database.SqlQueryRaw<string>(
-                "SELECT NombreCompleto AS Value FROM TBL_ROCLAND_SUPERADMIN_USUARIOS WHERE Id = {0}",
-                request.SuperAdminUsuarioId
-            ).FirstOrDefaultAsync()) ?? "Sin nombre",
+        "SELECT NombreCompleto AS Value FROM TBL_ROCLAND_SUPERADMIN_USUARIOS WHERE Id = {0}",
+        request.SuperAdminUsuarioId
+    ).FirstOrDefaultAsync()) ?? "Sin nombre",
             NumeroEmpleado = request.NumeroEmpleado,
             Turno = request.Turno,
             Activo = request.Activo,
             FechaCreacion = DateTime.UtcNow,
-            CreadoPor = null // o el ID del admin actual si se tiene
+            CreadoPor = adminId
         };
         _db.Perfiles.Add(nuevo);
         return await _db.SaveChangesAsync() > 0;
@@ -508,7 +521,20 @@ public class AdminService : IAdminService
     {
         var perfil = await _db.Perfiles.FindAsync(perfilId);
         if (perfil == null) return false;
+
+        // 1. Si el estado ya es el mismo que se solicita, no hacemos nada más 
+        // y devolvemos 'true' porque el objetivo ya se cumple.
+        if (perfil.Activo == activo) return true;
+
+        // 2. Si el estado es diferente, procedemos a cambiarlo
         perfil.Activo = activo;
+
+        int? adminId = null;
+        adminId = _currentUserService.GetUserId() ?? 1;
+
+        perfil.ModificadoPor = adminId;
+
+        // 4. Guardamos los cambios de forma segura
         return await _db.SaveChangesAsync() > 0;
     }
 

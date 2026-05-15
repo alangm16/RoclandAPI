@@ -91,7 +91,7 @@ public class AdminController : ControllerBase
     public async Task<IActionResult> CambiarEstadoPerfil(int id, [FromBody] bool activo)
     {
         var ok = await _admin.ActualizarEstadoPerfilAsync(id, activo);
-        return ok ? Ok() : NotFound();
+        return ok ? Ok(true) : NotFound();
     }
 
     // Mantenemos Actualizar para cambiar cosas como el Turno o el Número de Empleado

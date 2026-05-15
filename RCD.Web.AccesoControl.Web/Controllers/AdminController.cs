@@ -72,11 +72,6 @@ public class AdminController : ControllerBase
         return Ok(new { Items = items, Total = total });
     }
 
-    // Mantenemos Actualizar para cambiar cosas como el Turno o el Número de Empleado
-    [HttpPut("guardias/{id}")]
-    public async Task<IActionResult> ActualizarGuardia(int id, GuardiaUpdateDto dto)
-        => Ok(await _admin.ActualizarGuardiaAsync(id, dto));
-
     [HttpGet("usuarios/sinperfil")]
     public async Task<IActionResult> ObtenerUsuariosSinPerfil()
     {
@@ -98,6 +93,11 @@ public class AdminController : ControllerBase
         var ok = await _admin.ActualizarEstadoPerfilAsync(id, activo);
         return ok ? Ok() : NotFound();
     }
+
+    // Mantenemos Actualizar para cambiar cosas como el Turno o el Número de Empleado
+    [HttpPut("guardias/{id}")]
+    public async Task<IActionResult> ActualizarGuardia(int id, GuardiaUpdateDto dto)
+        => Ok(await _admin.ActualizarGuardiaAsync(id, dto));
 
     // ── Catálogos ──────────────────────────────────────────────────────
     [HttpPost("areas")]

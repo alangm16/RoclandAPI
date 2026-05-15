@@ -87,7 +87,7 @@ public class AdminController : ControllerBase
         return ok ? Ok() : BadRequest("No se pudo crear el perfil. Verifique que el usuario tenga asignación válida.");
     }
 
-    [HttpPut("guardias/{id}/estado")]
+    [HttpPut("guardias/{id}/toggle-estado")]
     public async Task<IActionResult> CambiarEstadoPerfil(int id, [FromBody] bool activo)
     {
         var ok = await _admin.ActualizarEstadoPerfilAsync(id, activo);

@@ -36,7 +36,7 @@ namespace RCD.Web.AccesoControl.Infrastructure.Services
             // 3. Verificar que el usuario tenga asignación activa al proyecto 'acceso-control'
             //    con rol 'Guardia'
             const string sqlAsignacion = @"
-                SELECT COUNT(1)
+                SELECT COUNT(1) AS Value
                 FROM TBL_ROCLAND_SUPERADMIN_PROYECTO_USUARIO_ROL pur
                 INNER JOIN TBL_ROCLAND_SUPERADMIN_PROYECTOS p ON pur.ProyectoId = p.Id
                 INNER JOIN TBL_ROCLAND_SUPERADMIN_ROLES r ON pur.RolId = r.Id
@@ -47,11 +47,15 @@ namespace RCD.Web.AccesoControl.Infrastructure.Services
                   AND p.Activo = 1
                   AND r.Activo = 1";
 
-            var esGuardia = await _context.Database
-                .ExecuteSqlRawAsync(sqlAsignacion, superAdminUsuarioId) > 0;
+                        // Cambiamos ExecuteSqlRawAsync por SqlQueryRaw
+                        var conteo = await _context.Database
+                            .SqlQueryRaw<int>(sqlAsignacion, superAdminUsuarioId)
+                            .FirstOrDefaultAsync();
 
-            if (!esGuardia)
-                return null;
+                        var esGuardia = conteo > 0;
+
+                        if (!esGuardia)
+                            return null;
 
             // 4. Si el perfil local ya existe
             if (perfil != null)

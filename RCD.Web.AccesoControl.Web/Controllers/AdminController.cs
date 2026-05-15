@@ -95,7 +95,7 @@ public class AdminController : ControllerBase
     }
 
     // Mantenemos Actualizar para cambiar cosas como el Turno o el Número de Empleado
-    [HttpPut("guardias/{id}")]
+    [HttpPut("guardias/{id}/estado")]
     public async Task<IActionResult> ActualizarGuardia(int id, GuardiaUpdateDto dto)
         => Ok(await _admin.ActualizarGuardiaAsync(id, dto));
 

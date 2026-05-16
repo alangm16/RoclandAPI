@@ -19,7 +19,7 @@ public class AuthController(
     [AllowAnonymous]
     public async Task<IActionResult> LoginDirecto([FromBody] LoginDirectoDto request)
     {
-        var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "IP desconocida";
+        var ipAddress = ObtenerIpRealCliente();
         try
         {
             var result = await authService.LoginDirectoAsync(request, ipAddress);
@@ -36,7 +36,7 @@ public class AuthController(
     [AllowAnonymous]
     public async Task<IActionResult> LoginMaestro([FromBody] LoginMaestroDto request)
     {
-        var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "IP desconocida";
+        var ipAddress = ObtenerIpRealCliente();
         try
         {
             var result = await authService.LoginMaestroAsync(request, ipAddress);
@@ -54,7 +54,7 @@ public class AuthController(
     [AllowAnonymous]
     public async Task<IActionResult> LoginQr([FromBody] LoginQrDto request)
     {
-        var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "IP desconocida";
+        var ipAddress = ObtenerIpRealCliente();
         try
         {
             var result = await authService.LoginQrAsync(request, ipAddress);
@@ -71,7 +71,7 @@ public class AuthController(
     [AllowAnonymous]
     public async Task<IActionResult> Refresh([FromBody] RefreshTokenDto request)
     {
-        var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "IP desconocida";
+        var ipAddress = ObtenerIpRealCliente();
         try
         {
             var result = await authService.RefrescarTokenAsync(request, ipAddress);
@@ -111,5 +111,27 @@ public class AuthController(
 
         var proyectos = await authService.DescubrirProyectosAsync(username);
         return Ok(proyectos);
+    }
+
+    private string ObtenerIpRealCliente()
+    {
+        // 1. Intentar leer la cabecera X-Forwarded-For (Estándar en proxies)
+        var forwardedFor = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault();
+        if (!string.IsNullOrEmpty(forwardedFor))
+        {
+            // X-Forwarded-For puede contener múltiples IPs (cliente, proxy1, proxy2). 
+            // La primera es siempre la del cliente original.
+            return forwardedFor.Split(',')[0].Trim();
+        }
+
+        // 2. Intentar leer X-Real-IP (Usado comúnmente por Nginx)
+        var realIp = HttpContext.Request.Headers["X-Real-IP"].FirstOrDefault();
+        if (!string.IsNullOrEmpty(realIp))
+        {
+            return realIp;
+        }
+
+        // 3. Fallback a la IP de la conexión (si entra directo sin proxy)
+        return HttpContext.Connection.RemoteIpAddress?.ToString() ?? "IP desconocida";
     }
 }

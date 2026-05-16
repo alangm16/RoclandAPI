@@ -91,13 +91,13 @@ public class UsuarioService : IUsuarioService
             Username = dto.Username,
             Email = dto.Email,
             PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password),
+            QRCode = dto.QRCode,
             Activo = true
         };
 
         _db.Usuarios.Add(usuario);
         await _db.SaveChangesAsync();
 
-        // ← Eliminar la línea que carga RolSA (ya no existe)
         return MapUsuarioDetalleBasico(usuario);
     }
 
@@ -111,13 +111,17 @@ public class UsuarioService : IUsuarioService
             usuario.PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password);
         }
 
+        if (!string.IsNullOrWhiteSpace(dto.QRCode))
+        {
+            usuario.QRCode = dto.QRCode;
+        }
+
         usuario.NombreCompleto = dto.NombreCompleto;
         usuario.Email = dto.Email;
 
         _db.Usuarios.Update(usuario);
         await _db.SaveChangesAsync();
 
-        // ← Eliminar las líneas que cargan RolSA y luego cargan colecciones (opcional, pero puedes mantener)
         await _db.Entry(usuario).Collection(u => u.ProyectosAsignados).LoadAsync();
         foreach (var pur in usuario.ProyectosAsignados)
         {

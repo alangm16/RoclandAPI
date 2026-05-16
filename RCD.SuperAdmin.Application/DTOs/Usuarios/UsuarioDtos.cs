@@ -44,13 +44,15 @@ public record CrearUsuarioDto(
     string NombreCompleto,
     string Username,
     string? Email,
-    string Password
+    string Password,
+    string? QRCode
 );
 
 public record ActualizarUsuarioDto(
     string NombreCompleto,
     string? Email,
-    string? Password
+    string? Password,
+    string? QRCode
 );
 
 public record AsignarProyectoRolDto(

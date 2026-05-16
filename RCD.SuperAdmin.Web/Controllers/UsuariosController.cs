@@ -50,7 +50,7 @@ public class UsuariosController(IUsuarioService usuarioService) : ControllerBase
         try
         {
             var usuario = await usuarioService.ActualizarAsync(id, request);
-            return Ok(usuario); // Retornamos el usuario actualizado para refrescar la UI
+            return Ok(usuario);
         }
         catch (KeyNotFoundException ex)
         {

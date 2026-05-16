@@ -374,7 +374,10 @@ builder.Services.AddControllers()
 // ─────────────────────────────────────────────────────────────────────────────
 var app = builder.Build();
 
-app.UseForwardedHeaders();
+app.UseForwardedHeaders(new ForwardedHeadersOptions
+{
+    ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
+});
 
 app.UseExceptionHandler();
 

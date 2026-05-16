@@ -40,7 +40,7 @@ namespace RCD.Web.AccesoControl.Application.DTOs
 
     public record RechazarSolicitudRequest(
         [Required, Range(1, int.MaxValue)] int SolicitudId,
-        [Required, StringLength(500, MinimumLength = 3)] string Motivo
+        [StringLength(500)] string? Motivo // <- Le quitamos Required, el MinimumLength y le agregamos el '?'
     );
 
     public record MarcarSalidaRequest(

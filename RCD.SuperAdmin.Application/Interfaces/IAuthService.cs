@@ -11,21 +11,21 @@ public interface IAuthService
     /// Flujo 1 — App Móvil / Desktop (acceso directo a un proyecto).
     /// Valida usuario + contraseña + rol activo en el proyecto solicitado.
     /// Devuelve un JWT con claims [Usuario, Proyecto, Rol].
-    Task<AuthResultDto> LoginDirectoAsync(LoginDirectoDto dto);
+    Task<AuthResultDto> LoginDirectoAsync(LoginDirectoDto dto, string? ipAddress = null);
 
     /// Flujo 2 — Panel Web SuperAdmin (acceso multi-proyecto).
     /// Valida usuario + contraseña sin especificar proyecto.
     /// Devuelve un "token maestro" + la lista de proyectos a los que tiene acceso.
-    Task<AuthMaestroResultDto> LoginMaestroAsync(LoginMaestroDto dto);
+    Task<AuthMaestroResultDto> LoginMaestroAsync(LoginMaestroDto dto, string? ipAddress = null);
 
     /// Flujo 5 — App Móvil (acceso directo por QR).
     /// Valida el QRCode del usuario + rol activo en el proyecto solicitado.
     /// Devuelve un JWT con claims [Usuario, Proyecto, Rol].
-    Task<AuthResultDto> LoginQrAsync(LoginQrDto dto);
+    Task<AuthResultDto> LoginQrAsync(LoginQrDto dto, string? ipAddress = null);
 
     /// Renueva un JWT expirado usando un RefreshToken válido.
     /// Aplica a ambos flujos.
-    Task<AuthResultDto> RefrescarTokenAsync(RefreshTokenDto dto);
+    Task<AuthResultDto> RefrescarTokenAsync(RefreshTokenDto dto, string? ipAddress = null);
 
     /// Revoca todos los RefreshTokens activos del usuario en la plataforma indicada.
     Task LogoutAsync(int usuarioId, string plataforma, int? proyectoId);

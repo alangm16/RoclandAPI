@@ -15,14 +15,14 @@ public class AuthService(
 {
     private readonly JwtSettings _jwt = jwtSettings.Value;
 
-    public async Task<AuthResultDto> LoginDirectoAsync(LoginDirectoDto dto)
+    public async Task<AuthResultDto> LoginDirectoAsync(LoginDirectoDto dto, string? ipAddress = null)
     {
         // 1. Buscar usuario activo
         var usuario = await db.Usuarios
             .FirstOrDefaultAsync(u => u.Username == dto.Username && u.Activo);
 
         // 2. Validar existencia + bloqueo + contraseña
-        await ValidarCredencialesAsync(usuario, dto.Password, dto.CodigoProyecto);
+        await ValidarCredencialesAsync(usuario, dto.Password, dto.CodigoProyecto, ipAddress);
 
         // 3. Verificar que el usuario tenga un rol activo en el proyecto solicitado
         var asignacion = await db.ProyectoUsuarioRoles
@@ -63,7 +63,7 @@ public class AuthService(
             usuario.Id, asignacion.ProyectoId, dto.Plataforma);
 
         // 7. Resetear intentos fallidos + UltimoAcceso
-        await RegistrarAccesoExitosoAsync(usuario, dto.CodigoProyecto, dto.Plataforma);
+        await RegistrarAccesoExitosoAsync(usuario, dto.CodigoProyecto, dto.Plataforma, ipAddress);
 
         return new AuthResultDto(
             AccessToken: accessToken,
@@ -73,14 +73,14 @@ public class AuthService(
         );
     }
 
-    public async Task<AuthMaestroResultDto> LoginMaestroAsync(LoginMaestroDto dto)
+    public async Task<AuthMaestroResultDto> LoginMaestroAsync(LoginMaestroDto dto, string? ipAddress = null)
     {
         // 1. Buscar usuario activo (sin RolSA)
         var usuario = await db.Usuarios
             .FirstOrDefaultAsync(u => u.Username == dto.Username && u.Activo);
 
         // 2. Validar credenciales (sin proyecto específico)
-        await ValidarCredencialesAsync(usuario, dto.Password, proyectoCodigo: null);
+        await ValidarCredencialesAsync(usuario, dto.Password, proyectoCodigo: null, ipAddress);
 
         // 3. Obtener proyecto 'super-admin'
         var proyectoSA = await db.Proyectos
@@ -128,7 +128,7 @@ public class AuthService(
         await GuardarRefreshTokenAsync(usuario.Id, null, dto.Plataforma, refreshToken);
 
         // 8. Registrar acceso exitoso
-        await RegistrarAccesoExitosoAsync(usuario, null, dto.Plataforma);
+        await RegistrarAccesoExitosoAsync(usuario, null, dto.Plataforma, ipAddress);
 
         // 9. Mapear usuario (sin RolSA)
         return new AuthMaestroResultDto(
@@ -149,7 +149,7 @@ public class AuthService(
         );
     }
 
-    public async Task<AuthResultDto> LoginQrAsync(LoginQrDto dto)
+    public async Task<AuthResultDto> LoginQrAsync(LoginQrDto dto, string? ipAddress = null)
     {
         // 1. Buscar usuario activo por su QRCode
         var usuario = await db.Usuarios
@@ -159,13 +159,13 @@ public class AuthService(
         if (usuario is null)
         {
             // Registramos el log de intento fallido sin revelar datos sensibles
-            await RegistrarLogAsync(null, dto.CodigoProyecto, "QR Login", false, "Código QR no encontrado o usuario inactivo.");
+            await RegistrarLogAsync(null, dto.CodigoProyecto, "QR Login", false, "Código QR no encontrado o usuario inactivo.", ipAddress: ipAddress);
             throw new UnauthorizedAccessException("Código QR inválido o usuario inactivo.");
         }
 
         if (usuario.BloqueadoHasta.HasValue && usuario.BloqueadoHasta > DateTime.UtcNow)
         {
-            await RegistrarLogAsync(usuario.Id, dto.CodigoProyecto, usuario.Username, false, $"Cuenta bloqueada hasta {usuario.BloqueadoHasta:HH:mm:ss} UTC.");
+            await RegistrarLogAsync(usuario.Id, dto.CodigoProyecto, usuario.Username, false, $"Cuenta bloqueada hasta {usuario.BloqueadoHasta:HH:mm:ss} UTC.", ipAddress: ipAddress);
             throw new UnauthorizedAccessException($"Cuenta bloqueada temporalmente. Intente después de {usuario.BloqueadoHasta:HH:mm} UTC.");
         }
 
@@ -181,7 +181,7 @@ public class AuthService(
 
         if (asignacion is null)
         {
-            await RegistrarLogAsync(usuario.Id, dto.CodigoProyecto, usuario.Username, false, "Sin acceso al proyecto mediante QR.");
+            await RegistrarLogAsync(usuario.Id, dto.CodigoProyecto, usuario.Username, false, "Sin acceso al proyecto mediante QR.", ipAddress: ipAddress);
             throw new UnauthorizedAccessException($"El usuario '{usuario.Username}' no tiene acceso al proyecto '{dto.CodigoProyecto}'.");
         }
 
@@ -208,7 +208,7 @@ public class AuthService(
         await ActualizarTokenDispositivoAsync(usuario.Id, asignacion.ProyectoId, dto.Plataforma);
 
         // 6. Resetear intentos fallidos + UltimoAcceso y guardar Log
-        await RegistrarAccesoExitosoAsync(usuario, dto.CodigoProyecto, dto.Plataforma);
+        await RegistrarAccesoExitosoAsync(usuario, dto.CodigoProyecto, dto.Plataforma, ipAddress);
 
         return new AuthResultDto(
             AccessToken: accessToken,
@@ -218,7 +218,7 @@ public class AuthService(
         );
     }
 
-    public async Task<AuthResultDto> RefrescarTokenAsync(RefreshTokenDto dto)
+    public async Task<AuthResultDto> RefrescarTokenAsync(RefreshTokenDto dto, string? ipAddress = null)
     {
         // 1. Buscar el RefreshToken vigente (sin incluir RolSA)
         var stored = await db.RefreshTokens
@@ -334,13 +334,13 @@ public class AuthService(
     }
 
     private async Task ValidarCredencialesAsync(
-        Usuario? usuario, string password, string? proyectoCodigo)
+        Usuario? usuario, string password, string? proyectoCodigo, string? ipAddress = null)
     {
         // Fallo: usuario no existe — no revelar si el username es válido
         if (usuario is null)
         {
             await RegistrarLogAsync(null, proyectoCodigo, "Desconocido",
-                exitoso: false, "Usuario no encontrado.");
+                exitoso: false, "Usuario no encontrado.", ipAddress: ipAddress);
             throw new UnauthorizedAccessException("Credenciales inválidas.");
         }
 
@@ -349,7 +349,7 @@ public class AuthService(
         {
             await RegistrarLogAsync(usuario.Id, proyectoCodigo, usuario.Username,
                 exitoso: false,
-                $"Cuenta bloqueada hasta {usuario.BloqueadoHasta:HH:mm:ss} UTC.");
+                $"Cuenta bloqueada hasta {usuario.BloqueadoHasta:HH:mm:ss} UTC.", ipAddress: ipAddress);
             throw new UnauthorizedAccessException(
                 $"Cuenta bloqueada temporalmente. Intente después de {usuario.BloqueadoHasta:HH:mm} UTC.");
         }
@@ -371,7 +371,7 @@ public class AuthService(
 
             await RegistrarLogAsync(usuario.Id, proyectoCodigo, usuario.Username,
                 exitoso: false,
-                $"Contraseña incorrecta. Intento {usuario.IntentosFallidos}/5.");
+                $"Contraseña incorrecta. Intento {usuario.IntentosFallidos}/5.", ipAddress: ipAddress);
 
             throw new UnauthorizedAccessException("Credenciales inválidas.");
         }
@@ -421,7 +421,7 @@ public class AuthService(
     }
 
     private async Task RegistrarAccesoExitosoAsync(
-        Usuario usuario, string? proyectoCodigo, string plataforma)
+        Usuario usuario, string? proyectoCodigo, string plataforma, string? ipAddress = null)
     {
         usuario.IntentosFallidos = 0;
         usuario.BloqueadoHasta = null;
@@ -429,7 +429,7 @@ public class AuthService(
         db.Usuarios.Update(usuario);
 
         await RegistrarLogAsync(usuario.Id, proyectoCodigo, usuario.Username,
-            exitoso: true, plataforma: plataforma);
+            exitoso: true, plataforma: plataforma, ipAddress: ipAddress);
 
         await db.SaveChangesAsync();
     }
@@ -437,7 +437,7 @@ public class AuthService(
     private async Task RegistrarLogAsync(
         int? usuarioId, string? proyectoCodigo,
         string usernameUsado, bool exitoso,
-        string? detalle = null, string plataforma = "Web")
+        string? detalle = null, string plataforma = "Web", string? ipAddress = null)
     {
         int? proyectoId = null;
 
@@ -456,6 +456,7 @@ public class AuthService(
             UsernameUsado = usernameUsado,
             Exitoso = exitoso,
             Plataforma = plataforma,
+            IpAddress = ipAddress,
             Detalle = detalle,
             Fecha = DateTime.UtcNow
         });

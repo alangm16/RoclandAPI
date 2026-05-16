@@ -19,9 +19,10 @@ public class AuthController(
     [AllowAnonymous]
     public async Task<IActionResult> LoginDirecto([FromBody] LoginDirectoDto request)
     {
+        var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "IP desconocida";
         try
         {
-            var result = await authService.LoginDirectoAsync(request);
+            var result = await authService.LoginDirectoAsync(request, ipAddress);
             return Ok(result);
         }
         catch (UnauthorizedAccessException ex)
@@ -35,9 +36,10 @@ public class AuthController(
     [AllowAnonymous]
     public async Task<IActionResult> LoginMaestro([FromBody] LoginMaestroDto request)
     {
+        var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "IP desconocida";
         try
         {
-            var result = await authService.LoginMaestroAsync(request);
+            var result = await authService.LoginMaestroAsync(request, ipAddress);
             return Ok(result);
         }
         catch (UnauthorizedAccessException ex)
@@ -52,9 +54,10 @@ public class AuthController(
     [AllowAnonymous]
     public async Task<IActionResult> LoginQr([FromBody] LoginQrDto request)
     {
+        var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "IP desconocida";
         try
         {
-            var result = await authService.LoginQrAsync(request);
+            var result = await authService.LoginQrAsync(request, ipAddress);
             return Ok(result);
         }
         catch (UnauthorizedAccessException ex)
@@ -68,9 +71,10 @@ public class AuthController(
     [AllowAnonymous]
     public async Task<IActionResult> Refresh([FromBody] RefreshTokenDto request)
     {
+        var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "IP desconocida";
         try
         {
-            var result = await authService.RefrescarTokenAsync(request);
+            var result = await authService.RefrescarTokenAsync(request, ipAddress);
             return Ok(result);
         }
         catch (UnauthorizedAccessException ex)

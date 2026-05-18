@@ -16,7 +16,7 @@ public class FcmService : IFcmService
     private readonly IFcmTokenRepository _tokenRepository;
 
     private string FcmEndpoint =>
-        $"https://fcm.googleapis.com/v1/projects/{_config["Firebase:ProjectId"]}/messages:send";
+        $"https://fcm.googleapis.com/v1/projects/{_config["Modules:AccesoControl:Firebase:ProjectId"]}/messages:send";
 
     public FcmService(HttpClient http, IConfiguration config, ILogger<FcmService> logger, IServiceScopeFactory scopeFactory, IFcmTokenRepository tokenRepository)
     {
@@ -89,7 +89,7 @@ public class FcmService : IFcmService
 
     private async Task<string> ObtenerAccessTokenAsync()
     {
-        var serviceAccountJson = _config["Firebase:ServiceAccountJson"]!;
+        var serviceAccountJson = _config["Modules:AccesoControl:Firebase:ServiceAccountJson"]!;
         var serviceAccount = JsonSerializer.Deserialize<JsonElement>(serviceAccountJson);
 
         var clientEmail = serviceAccount.GetProperty("client_email").GetString()!;
